@@ -1,0 +1,227 @@
+# ============================================================
+# CD Pipeline - PR Tracker Extension Release
+# Publishes VSIX to Azure DevOps Marketplace
+# Triggered on tags or manual runs on main
+# ============================================================
+
+trigger:
+  tags:
+    include:
+      - "v*"
+
+pr: none
+
+pool:
+  vmImage: "ubuntu-latest"
+
+variables:
+  nodeVersion: "18.x"
+  npmCacheFolder: $(Pipeline.Workspace)/.npm
+  isRelease: ${{ startsWith(variables['Build.SourceBranch'], 'refs/tags/v') }}
+
+stages:
+  # ─────────────────────────────────────────────
+  # Stage 1: Build
+  # ─────────────────────────────────────────────
+  - stage: Build
+    displayName: "Build"
+    jobs:
+      - job: BuildExtension
+        displayName: "Build Extension"
+        steps:
+          - task: NodeTool@0
+            displayName: "Install Node.js $(nodeVersion)"
+            inputs:
+              versionSpec: $(nodeVersion)
+
+          - task: Cache@2
+            displayName: "Cache npm packages"
+            inputs:
+              key: 'npm | "$(Agent.OS)" | package-lock.json'
+              restoreKeys: |
+                npm | "$(Agent.OS)"
+              path: $(npmCacheFolder)
+
+          - script: npm ci
+            displayName: "Install dependencies (clean)"
+
+          - script: npx tsc --noEmit
+            displayName: "TypeScript type check"
+
+          - script: npm run lint
+            displayName: "ESLint"
+
+          - script: npm run build
+            displayName: "Webpack production build"
+
+          - publish: $(System.DefaultWorkingDirectory)/dist
+            artifact: dist
+            displayName: "Publish build artifacts"
+
+  # ─────────────────────────────────────────────
+  # Stage 2: Security Gate
+  # ─────────────────────────────────────────────
+  - stage: SecurityGate
+    displayName: "Security Gate"
+    dependsOn: Build
+    jobs:
+      - job: SecurityChecks
+        displayName: "Security Checks"
+        steps:
+          - task: NodeTool@0
+            displayName: "Install Node.js $(nodeVersion)"
+            inputs:
+              versionSpec: $(nodeVersion)
+
+          - script: npm ci
+            displayName: "Install dependencies"
+
+          - script: npm audit --production --audit-level=high
+            displayName: "npm audit (fail on high+ vulnerabilities)"
+            continueOnError: false
+
+          - script: |
+              ISSUES=0
+              if grep -r "eval(" src/ --include="*.ts" --include="*.tsx"; then ISSUES=$((ISSUES + 1)); fi
+              if grep -r "innerHTML" src/ --include="*.ts" --include="*.tsx"; then ISSUES=$((ISSUES + 1)); fi
+              if grep -r "dangerouslySetInnerHTML" src/ --include="*.ts" --include="*.tsx"; then ISSUES=$((ISSUES + 1)); fi
+              if [ $ISSUES -gt 0 ]; then
+                echo "Security gate FAILED: found $ISSUES issue(s)"
+                exit 1
+              fi
+              echo "Security gate PASSED"
+            displayName: "SAST gate"
+
+  # ─────────────────────────────────────────────
+  # Stage 3: Package
+  # ─────────────────────────────────────────────
+  - stage: Package
+    displayName: "Package VSIX"
+    dependsOn:
+      - Build
+      - SecurityGate
+    jobs:
+      - job: CreateVSIX
+        displayName: "Create VSIX Package"
+        steps:
+          - task: NodeTool@0
+            displayName: "Install Node.js $(nodeVersion)"
+            inputs:
+              versionSpec: $(nodeVersion)
+
+          - script: npm ci
+            displayName: "Install dependencies"
+
+          - download: current
+            artifact: dist
+            displayName: "Download build artifacts"
+
+          - script: cp -r $(Pipeline.Workspace)/dist $(System.DefaultWorkingDirectory)/dist
+            displayName: "Restore build output"
+
+          - script: |
+              # Extract version from tag or use package.json version
+              if [[ "$(Build.SourceBranch)" == refs/tags/v* ]]; then
+                VERSION=$(echo "$(Build.SourceBranch)" | sed 's|refs/tags/v||')
+                echo "Release version from tag: $VERSION"
+              else
+                VERSION=$(node -p "require('./package.json').version")
+                echo "Version from package.json: $VERSION"
+              fi
+
+              echo "##vso[task.setvariable variable=extensionVersion;isOutput=true]$VERSION"
+
+              # Update version in manifest
+              node -e "
+                const fs = require('fs');
+                const manifest = JSON.parse(fs.readFileSync('vss-extension.json', 'utf8'));
+                manifest.version = '$VERSION';
+                fs.writeFileSync('vss-extension.json', JSON.stringify(manifest, null, 2));
+                console.log('Manifest version updated to:', manifest.version);
+              "
+            displayName: "Set version"
+            name: versionStep
+
+          - script: |
+              npx tfx extension create \
+                --manifest-globs vss-extension.json \
+                --output-path $(Build.ArtifactStagingDirectory)/vsix
+            displayName: "Create VSIX package"
+
+          - publish: $(Build.ArtifactStagingDirectory)/vsix
+            artifact: vsix
+            displayName: "Publish VSIX artifact"
+
+  # ─────────────────────────────────────────────
+  # Stage 4: Publish to Marketplace (Private)
+  # ─────────────────────────────────────────────
+  - stage: PublishPrivate
+    displayName: "Publish to Marketplace (Private)"
+    dependsOn: Package
+    condition: and(succeeded(), eq(variables.isRelease, true))
+    jobs:
+      - deployment: PublishExtension
+        displayName: "Publish Extension"
+        environment: "marketplace-private"
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: current
+                  artifact: vsix
+                  displayName: "Download VSIX"
+
+                - task: TfxInstaller@4
+                  displayName: "Install tfx-cli"
+                  inputs:
+                    version: "v0.17.x"
+
+                - task: PublishAzureDevOpsExtension@5
+                  displayName: "Publish to Marketplace (Private)"
+                  inputs:
+                    connectTo: "VsTeam"
+                    connectedServiceName: "$(marketplaceServiceConnection)"
+                    fileType: "vsix"
+                    vsixFile: "$(Pipeline.Workspace)/vsix/*.vsix"
+                    extensionVisibility: "private"
+                    updateTasksVersion: false
+
+  # ─────────────────────────────────────────────
+  # Stage 5: Publish to Marketplace (Public)
+  # Manual approval required
+  # ─────────────────────────────────────────────
+  - stage: PublishPublic
+    displayName: "Publish to Marketplace (Public)"
+    dependsOn: PublishPrivate
+    condition: and(succeeded(), eq(variables.isRelease, true))
+    jobs:
+      - deployment: PublishPublicExtension
+        displayName: "Publish Extension (Public)"
+        environment: "marketplace-public"
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: current
+                  artifact: vsix
+                  displayName: "Download VSIX"
+
+                - task: TfxInstaller@4
+                  displayName: "Install tfx-cli"
+                  inputs:
+                    version: "v0.17.x"
+
+                - task: PublishAzureDevOpsExtension@5
+                  displayName: "Publish to Marketplace (Public)"
+                  inputs:
+                    connectTo: "VsTeam"
+                    connectedServiceName: "$(marketplaceServiceConnection)"
+                    fileType: "vsix"
+                    vsixFile: "$(Pipeline.Workspace)/vsix/*.vsix"
+                    extensionVisibility: "public"
+                    updateTasksVersion: false
+
+                - script: |
+                    echo "Extension published successfully!"
+                    echo "Marketplace URL: https://marketplace.visualstudio.com/items?itemName=AnassKartit.pr-tracker-hub"
+                  displayName: "Print marketplace URL"

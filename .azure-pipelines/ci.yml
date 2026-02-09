@@ -1,0 +1,186 @@
+# ============================================================
+# CI Pipeline - PR Tracker Extension
+# Runs on every push and PR to validate build, lint, and security
+# ============================================================
+
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+      - release/*
+
+pr:
+  branches:
+    include:
+      - main
+      - develop
+
+pool:
+  vmImage: "ubuntu-latest"
+
+variables:
+  nodeVersion: "18.x"
+  npmCacheFolder: $(Pipeline.Workspace)/.npm
+
+stages:
+  # ─────────────────────────────────────────────
+  # Stage 1: Build & Validate
+  # ─────────────────────────────────────────────
+  - stage: Build
+    displayName: "Build & Validate"
+    jobs:
+      - job: BuildAndLint
+        displayName: "Build, Lint & Type Check"
+        steps:
+          - task: NodeTool@0
+            displayName: "Install Node.js $(nodeVersion)"
+            inputs:
+              versionSpec: $(nodeVersion)
+
+          - task: Cache@2
+            displayName: "Cache npm packages"
+            inputs:
+              key: 'npm | "$(Agent.OS)" | package-lock.json'
+              restoreKeys: |
+                npm | "$(Agent.OS)"
+              path: $(npmCacheFolder)
+
+          - script: npm ci
+            displayName: "Install dependencies (clean)"
+
+          - script: npx tsc --noEmit
+            displayName: "TypeScript type check"
+
+          - script: npm run lint
+            displayName: "ESLint (with security rules)"
+            continueOnError: false
+
+          - script: npm run build
+            displayName: "Webpack production build"
+
+          - publish: $(System.DefaultWorkingDirectory)/dist
+            artifact: dist
+            displayName: "Publish build artifacts"
+
+  # ─────────────────────────────────────────────
+  # Stage 2: Security Scanning
+  # ─────────────────────────────────────────────
+  - stage: Security
+    displayName: "Security Scan"
+    dependsOn: Build
+    jobs:
+      - job: AuditAndScan
+        displayName: "Dependency Audit & SAST"
+        steps:
+          - task: NodeTool@0
+            displayName: "Install Node.js $(nodeVersion)"
+            inputs:
+              versionSpec: $(nodeVersion)
+
+          - script: npm ci
+            displayName: "Install dependencies"
+
+          - script: |
+              echo "## npm audit results" > $(Build.ArtifactStagingDirectory)/audit-report.txt
+              npm audit --production 2>&1 | tee -a $(Build.ArtifactStagingDirectory)/audit-report.txt
+              echo ""
+              echo "## Audit complete"
+            displayName: "npm audit (production dependencies)"
+            continueOnError: true
+
+          - script: |
+              npx audit-ci --config audit-ci.json 2>&1 || true
+            displayName: "audit-ci threshold check"
+            continueOnError: true
+
+          - script: |
+              echo "Checking for known vulnerable patterns..."
+              # Check for dangerous patterns in source code
+              ISSUES=0
+
+              # Check for eval usage
+              if grep -r "eval(" src/ --include="*.ts" --include="*.tsx" | grep -v "node_modules"; then
+                echo "WARNING: eval() usage found"
+                ISSUES=$((ISSUES + 1))
+              fi
+
+              # Check for innerHTML usage
+              if grep -r "innerHTML" src/ --include="*.ts" --include="*.tsx" | grep -v "node_modules"; then
+                echo "WARNING: innerHTML usage found"
+                ISSUES=$((ISSUES + 1))
+              fi
+
+              # Check for dangerouslySetInnerHTML
+              if grep -r "dangerouslySetInnerHTML" src/ --include="*.ts" --include="*.tsx" | grep -v "node_modules"; then
+                echo "WARNING: dangerouslySetInnerHTML usage found"
+                ISSUES=$((ISSUES + 1))
+              fi
+
+              # Check for hardcoded secrets patterns
+              if grep -rE "(password|secret|apikey|api_key|token)\s*[:=]\s*['\"][^'\"]+['\"]" src/ --include="*.ts" --include="*.tsx" | grep -vi "type\|interface\|enum\|\/\/"; then
+                echo "ERROR: Potential hardcoded secrets found"
+                ISSUES=$((ISSUES + 1))
+              fi
+
+              if [ $ISSUES -gt 0 ]; then
+                echo "Found $ISSUES security concern(s). Review above."
+                exit 1
+              else
+                echo "No critical security patterns detected."
+              fi
+            displayName: "Static Application Security Testing (SAST)"
+            continueOnError: false
+
+          - publish: $(Build.ArtifactStagingDirectory)
+            artifact: security-reports
+            displayName: "Publish security reports"
+            condition: always()
+
+  # ─────────────────────────────────────────────
+  # Stage 3: Package VSIX (validation only on PRs)
+  # ─────────────────────────────────────────────
+  - stage: Package
+    displayName: "Package VSIX"
+    dependsOn:
+      - Build
+      - Security
+    condition: succeeded()
+    jobs:
+      - job: CreateVSIX
+        displayName: "Create VSIX Package"
+        steps:
+          - task: NodeTool@0
+            displayName: "Install Node.js $(nodeVersion)"
+            inputs:
+              versionSpec: $(nodeVersion)
+
+          - script: npm ci
+            displayName: "Install dependencies"
+
+          - download: current
+            artifact: dist
+            displayName: "Download build artifacts"
+
+          - script: |
+              cp -r $(Pipeline.Workspace)/dist $(System.DefaultWorkingDirectory)/dist
+            displayName: "Restore build output"
+
+          - script: |
+              npx tfx extension create \
+                --manifest-globs vss-extension.json \
+                --output-path $(Build.ArtifactStagingDirectory)/vsix
+            displayName: "Create VSIX package"
+
+          - publish: $(Build.ArtifactStagingDirectory)/vsix
+            artifact: vsix
+            displayName: "Publish VSIX artifact"
+
+          - script: |
+              VSIX_FILE=$(ls $(Build.ArtifactStagingDirectory)/vsix/*.vsix)
+              VSIX_SIZE=$(du -h "$VSIX_FILE" | cut -f1)
+              echo "VSIX created: $(basename $VSIX_FILE)"
+              echo "Size: $VSIX_SIZE"
+              echo "##vso[task.setvariable variable=vsixFile;isOutput=true]$(basename $VSIX_FILE)"
+            displayName: "Verify VSIX"
+            name: vsixInfo

@@ -1,0 +1,121 @@
+# ============================================================
+# CI - Build, Lint, Security Scan
+# ============================================================
+
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+
+      - run: npm ci
+
+      - name: TypeScript type check
+        run: npx tsc --noEmit
+
+      - name: ESLint (with security rules)
+        run: npm run lint
+
+      - name: Webpack production build
+        run: npm run build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+
+      - run: npm ci
+
+      - name: npm audit (production)
+        run: npm audit --production --audit-level=high
+        continue-on-error: true
+
+      - name: SAST - Check for dangerous patterns
+        run: |
+          ISSUES=0
+
+          if grep -r "eval(" src/ --include="*.ts" --include="*.tsx"; then
+            echo "::warning::eval() usage found"
+            ISSUES=$((ISSUES + 1))
+          fi
+
+          if grep -r "innerHTML" src/ --include="*.ts" --include="*.tsx"; then
+            echo "::warning::innerHTML usage found"
+            ISSUES=$((ISSUES + 1))
+          fi
+
+          if grep -r "dangerouslySetInnerHTML" src/ --include="*.ts" --include="*.tsx"; then
+            echo "::warning::dangerouslySetInnerHTML usage found"
+            ISSUES=$((ISSUES + 1))
+          fi
+
+          if grep -rE "(password|secret|apikey|api_key)\s*[:=]\s*['\"][^'\"]+['\"]" src/ --include="*.ts" --include="*.tsx" | grep -vi "type\|interface\|enum\|\/\/"; then
+            echo "::error::Potential hardcoded secrets found"
+            ISSUES=$((ISSUES + 1))
+          fi
+
+          if [ $ISSUES -gt 0 ]; then
+            echo "Found $ISSUES security concern(s)"
+            exit 1
+          fi
+          echo "No security issues detected"
+
+  package:
+    name: Package VSIX
+    runs-on: ubuntu-latest
+    needs: [build, security]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+
+      - run: npm ci
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Create VSIX
+        run: |
+          mkdir -p vsix
+          npx tfx extension create \
+            --manifest-globs vss-extension.json \
+            --output-path ./vsix
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vsix
+          path: vsix/*.vsix

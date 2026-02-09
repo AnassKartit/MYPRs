@@ -1,0 +1,88 @@
+# ============================================================
+# Release - Build VSIX and create GitHub Release
+# Triggered on version tags (v1.0.0, v1.2.3, etc.)
+# ============================================================
+
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build, Package & Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+
+      - run: npm ci
+
+      - name: TypeScript type check
+        run: npx tsc --noEmit
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: Security audit
+        run: npm audit --production --audit-level=high
+        continue-on-error: true
+
+      - name: Build
+        run: npm run build
+
+      - name: Set version from tag
+        id: version
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+          # Update manifest version
+          node -e "
+            const fs = require('fs');
+            const m = JSON.parse(fs.readFileSync('vss-extension.json','utf8'));
+            m.version = '$VERSION';
+            fs.writeFileSync('vss-extension.json', JSON.stringify(m, null, 2));
+          "
+          echo "Updated manifest to version $VERSION"
+
+      - name: Create VSIX
+        run: |
+          mkdir -p vsix
+          npx tfx extension create \
+            --manifest-globs vss-extension.json \
+            --output-path ./vsix
+
+      - name: Get VSIX filename
+        id: vsix
+        run: |
+          VSIX_FILE=$(ls vsix/*.vsix)
+          echo "file=$VSIX_FILE" >> $GITHUB_OUTPUT
+          echo "name=$(basename $VSIX_FILE)" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.vsix.outputs.file }}
+          generate_release_notes: true
+          body: |
+            ## PR Tracker v${{ steps.version.outputs.version }}
+
+            ### Install
+            1. Download the `.vsix` file from this release
+            2. Go to Azure DevOps > Organization Settings > Extensions
+            3. Click "Upload extension" and select the downloaded file
+
+            ### Marketplace
+            Or install directly from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=AnassKartit.pr-tracker-hub)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

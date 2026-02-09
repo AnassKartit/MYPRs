@@ -1,0 +1,28 @@
+# ============================================================
+# Reusable template: Install dependencies and build
+# ============================================================
+
+parameters:
+  - name: nodeVersion
+    type: string
+    default: "18.x"
+
+steps:
+  - task: NodeTool@0
+    displayName: "Install Node.js ${{ parameters.nodeVersion }}"
+    inputs:
+      versionSpec: ${{ parameters.nodeVersion }}
+
+  - task: Cache@2
+    displayName: "Cache npm packages"
+    inputs:
+      key: 'npm | "$(Agent.OS)" | package-lock.json'
+      restoreKeys: |
+        npm | "$(Agent.OS)"
+      path: $(Pipeline.Workspace)/.npm
+
+  - script: npm ci
+    displayName: "Install dependencies (clean)"
+
+  - script: npm run build
+    displayName: "Webpack production build"
