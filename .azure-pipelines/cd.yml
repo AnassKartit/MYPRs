@@ -15,7 +15,7 @@ pool:
   vmImage: "ubuntu-latest"
 
 variables:
-  nodeVersion: "18.x"
+  nodeVersion: "20.x"
   npmCacheFolder: $(Pipeline.Workspace)/.npm
   isRelease: ${{ startsWith(variables['Build.SourceBranch'], 'refs/tags/v') }}
 
@@ -80,16 +80,7 @@ stages:
             displayName: "npm audit (fail on high+ vulnerabilities)"
             continueOnError: false
 
-          - script: |
-              ISSUES=0
-              if grep -r "eval(" src/ --include="*.ts" --include="*.tsx"; then ISSUES=$((ISSUES + 1)); fi
-              if grep -r "innerHTML" src/ --include="*.ts" --include="*.tsx"; then ISSUES=$((ISSUES + 1)); fi
-              if grep -r "dangerouslySetInnerHTML" src/ --include="*.ts" --include="*.tsx"; then ISSUES=$((ISSUES + 1)); fi
-              if [ $ISSUES -gt 0 ]; then
-                echo "Security gate FAILED: found $ISSUES issue(s)"
-                exit 1
-              fi
-              echo "Security gate PASSED"
+          - script: bash scripts/sast-check.sh
             displayName: "SAST gate"
 
   # ─────────────────────────────────────────────
@@ -147,6 +138,32 @@ stages:
                 --manifest-globs vss-extension.json \
                 --output-path $(Build.ArtifactStagingDirectory)/vsix
             displayName: "Create VSIX package"
+
+          - script: |
+              VSIX_FILE=$(ls $(Build.ArtifactStagingDirectory)/vsix/*.vsix)
+              VSIX_SIZE=$(du -h "$VSIX_FILE" | cut -f1)
+              echo "VSIX: $(basename $VSIX_FILE) ($VSIX_SIZE)"
+
+              mkdir -p vsix-check
+              unzip -q "$VSIX_FILE" -d vsix-check
+
+              MISSING=0
+              for REQUIRED in "extension.vsomanifest" "extension/dist/hub.js" "extension/dist/hub.html" "extension/static/icon.png"; do
+                if [ ! -f "vsix-check/$REQUIRED" ]; then
+                  echo "##vso[task.logissue type=error]Missing required file in VSIX: $REQUIRED"
+                  MISSING=$((MISSING + 1))
+                else
+                  echo "  OK: $REQUIRED"
+                fi
+              done
+
+              if [ $MISSING -gt 0 ]; then
+                echo "##vso[task.logissue type=error]VSIX validation failed — $MISSING required file(s) missing"
+                exit 1
+              fi
+              echo "VSIX validation passed"
+              rm -rf vsix-check
+            displayName: "Validate VSIX contents"
 
           - publish: $(Build.ArtifactStagingDirectory)/vsix
             artifact: vsix
