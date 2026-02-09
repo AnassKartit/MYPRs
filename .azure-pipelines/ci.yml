@@ -20,7 +20,7 @@ pool:
   vmImage: "ubuntu-latest"
 
 variables:
-  nodeVersion: "18.x"
+  nodeVersion: "20.x"
   npmCacheFolder: $(Pipeline.Workspace)/.npm
 
 stages:
@@ -94,41 +94,7 @@ stages:
             displayName: "audit-ci threshold check"
             continueOnError: true
 
-          - script: |
-              echo "Checking for known vulnerable patterns..."
-              # Check for dangerous patterns in source code
-              ISSUES=0
-
-              # Check for eval usage
-              if grep -r "eval(" src/ --include="*.ts" --include="*.tsx" | grep -v "node_modules"; then
-                echo "WARNING: eval() usage found"
-                ISSUES=$((ISSUES + 1))
-              fi
-
-              # Check for innerHTML usage
-              if grep -r "innerHTML" src/ --include="*.ts" --include="*.tsx" | grep -v "node_modules"; then
-                echo "WARNING: innerHTML usage found"
-                ISSUES=$((ISSUES + 1))
-              fi
-
-              # Check for dangerouslySetInnerHTML
-              if grep -r "dangerouslySetInnerHTML" src/ --include="*.ts" --include="*.tsx" | grep -v "node_modules"; then
-                echo "WARNING: dangerouslySetInnerHTML usage found"
-                ISSUES=$((ISSUES + 1))
-              fi
-
-              # Check for hardcoded secrets patterns
-              if grep -rE "(password|secret|apikey|api_key|token)\s*[:=]\s*['\"][^'\"]+['\"]" src/ --include="*.ts" --include="*.tsx" | grep -vi "type\|interface\|enum\|\/\/"; then
-                echo "ERROR: Potential hardcoded secrets found"
-                ISSUES=$((ISSUES + 1))
-              fi
-
-              if [ $ISSUES -gt 0 ]; then
-                echo "Found $ISSUES security concern(s). Review above."
-                exit 1
-              else
-                echo "No critical security patterns detected."
-              fi
+          - script: bash scripts/sast-check.sh
             displayName: "Static Application Security Testing (SAST)"
             continueOnError: false
 
@@ -172,15 +138,32 @@ stages:
                 --output-path $(Build.ArtifactStagingDirectory)/vsix
             displayName: "Create VSIX package"
 
-          - publish: $(Build.ArtifactStagingDirectory)/vsix
-            artifact: vsix
-            displayName: "Publish VSIX artifact"
-
           - script: |
               VSIX_FILE=$(ls $(Build.ArtifactStagingDirectory)/vsix/*.vsix)
               VSIX_SIZE=$(du -h "$VSIX_FILE" | cut -f1)
-              echo "VSIX created: $(basename $VSIX_FILE)"
-              echo "Size: $VSIX_SIZE"
-              echo "##vso[task.setvariable variable=vsixFile;isOutput=true]$(basename $VSIX_FILE)"
-            displayName: "Verify VSIX"
-            name: vsixInfo
+              echo "VSIX: $(basename $VSIX_FILE) ($VSIX_SIZE)"
+
+              mkdir -p vsix-check
+              unzip -q "$VSIX_FILE" -d vsix-check
+
+              MISSING=0
+              for REQUIRED in "extension.vsomanifest" "extension/dist/hub.js" "extension/dist/hub.html" "extension/static/icon.png"; do
+                if [ ! -f "vsix-check/$REQUIRED" ]; then
+                  echo "##vso[task.logissue type=error]Missing required file in VSIX: $REQUIRED"
+                  MISSING=$((MISSING + 1))
+                else
+                  echo "  OK: $REQUIRED"
+                fi
+              done
+
+              if [ $MISSING -gt 0 ]; then
+                echo "##vso[task.logissue type=error]VSIX validation failed — $MISSING required file(s) missing"
+                exit 1
+              fi
+              echo "VSIX validation passed"
+              rm -rf vsix-check
+            displayName: "Validate VSIX contents"
+
+          - publish: $(Build.ArtifactStagingDirectory)/vsix
+            artifact: vsix
+            displayName: "Publish VSIX artifact"

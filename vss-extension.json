@@ -53,8 +53,14 @@
       "addressable": true
     },
     {
-      "path": "static",
-      "addressable": true
+      "path": "static/icon.png",
+      "addressable": true,
+      "packagePath": "static/icon.png"
+    },
+    {
+      "path": "static/icon-large.png",
+      "addressable": true,
+      "packagePath": "static/icon-large.png"
     }
   ],
   "scopes": [
