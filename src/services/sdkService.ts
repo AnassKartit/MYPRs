@@ -34,13 +34,15 @@ export async function initializeSDK(): Promise<void> {
   if (_initialized) return;
   try {
     console.log("[PR-Tracker] Starting SDK.init()...");
-    await withTimeout(SDK.init(), 10000, "SDK.init()");
+    await withTimeout(SDK.init({ loaded: false }), 15000, "SDK.init()");
     console.log("[PR-Tracker] SDK.init() complete. Waiting for SDK.ready()...");
-    await withTimeout(SDK.ready(), 10000, "SDK.ready()");
+    await withTimeout(SDK.ready(), 15000, "SDK.ready()");
     console.log("[PR-Tracker] SDK fully initialized.");
     _initialized = true;
+    await SDK.notifyLoadSucceeded();
   } catch (err) {
     console.error("[PR-Tracker] SDK initialization failed:", err);
+    SDK.notifyLoadFailed(err instanceof Error ? err.message : String(err));
     throw err;
   }
 }

@@ -1,6 +1,6 @@
 # ============================================================
-# Release - Build VSIX and create GitHub Release
-# Triggered on version tags (v1.0.0, v1.2.3, etc.)
+# Release - Build VSIX & Publish to Azure DevOps Marketplace
+# Triggered on version tags (v1.0.0, v1.2.3, etc.) or manually
 # ============================================================
 
 name: Release
@@ -9,20 +9,71 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (e.g. 1.2.0) — leave empty to use package.json version"
+        required: false
+        type: string
+      publish_marketplace:
+        description: "Publish to Azure DevOps Marketplace"
+        required: false
+        type: boolean
+        default: false
+      visibility:
+        description: "Marketplace visibility"
+        required: false
+        type: choice
+        options:
+          - private
+          - public
+        default: private
 
 permissions:
   contents: write
 
+env:
+  NODE_VERSION: 20
+
 jobs:
-  build-and-release:
-    name: Build, Package & Release
+  # ─────────────────────────────────────────────
+  # Job 1: Security Gate
+  # ─────────────────────────────────────────────
+  security-gate:
+    name: Security Gate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: npm audit (production)
+        run: npm audit --production --audit-level=high
+
+      - name: SAST checks
+        run: bash scripts/sast-check.sh
+
+  # ─────────────────────────────────────────────
+  # Job 2: Build, Package & Validate VSIX
+  # ─────────────────────────────────────────────
+  build-and-package:
+    name: Build & Package VSIX
+    runs-on: ubuntu-latest
+    needs: security-gate
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      vsix_name: ${{ steps.vsix.outputs.name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
 
       - run: npm ci
@@ -33,56 +84,187 @@ jobs:
       - name: ESLint
         run: npm run lint
 
-      - name: Security audit
-        run: npm audit --production --audit-level=high
-        continue-on-error: true
-
-      - name: Build
+      - name: Webpack production build
         run: npm run build
 
-      - name: Set version from tag
+      - name: Determine version
         id: version
         run: |
-          VERSION=${GITHUB_REF_NAME#v}
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION=${GITHUB_REF_NAME#v}
+          elif [[ -n "${{ inputs.version }}" ]]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION=$(node -p "require('./package.json').version")
+          fi
 
-          # Update manifest version
+          # Validate semver format
+          if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$'; then
+            echo "::error::Invalid version format: $VERSION (expected semver: X.Y.Z)"
+            exit 1
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Release version: $VERSION"
+
+      - name: Update manifest version
+        run: |
           node -e "
             const fs = require('fs');
-            const m = JSON.parse(fs.readFileSync('vss-extension.json','utf8'));
-            m.version = '$VERSION';
-            fs.writeFileSync('vss-extension.json', JSON.stringify(m, null, 2));
+            const manifest = JSON.parse(fs.readFileSync('vss-extension.json', 'utf8'));
+            manifest.version = '${{ steps.version.outputs.version }}';
+            fs.writeFileSync('vss-extension.json', JSON.stringify(manifest, null, 2));
+            console.log('Manifest updated to version', manifest.version);
           "
-          echo "Updated manifest to version $VERSION"
 
-      - name: Create VSIX
+      - name: Create VSIX package
         run: |
           mkdir -p vsix
           npx tfx extension create \
             --manifest-globs vss-extension.json \
             --output-path ./vsix
 
-      - name: Get VSIX filename
+      - name: Get VSIX file info
         id: vsix
         run: |
           VSIX_FILE=$(ls vsix/*.vsix)
-          echo "file=$VSIX_FILE" >> $GITHUB_OUTPUT
-          echo "name=$(basename $VSIX_FILE)" >> $GITHUB_OUTPUT
+          VSIX_NAME=$(basename "$VSIX_FILE")
+          VSIX_SIZE=$(du -h "$VSIX_FILE" | cut -f1)
+          echo "file=$VSIX_FILE" >> "$GITHUB_OUTPUT"
+          echo "name=$VSIX_NAME" >> "$GITHUB_OUTPUT"
+          echo "VSIX: $VSIX_NAME ($VSIX_SIZE)"
+
+      - name: Validate VSIX contents
+        run: |
+          VSIX_FILE=$(ls vsix/*.vsix)
+          echo "Validating VSIX package..."
+
+          # VSIX is a zip — verify it can be extracted
+          mkdir -p vsix-check
+          unzip -q "$VSIX_FILE" -d vsix-check
+
+          # Verify essential files exist in the package
+          MISSING=0
+          for REQUIRED in "extension.vsomanifest" "extension/dist/hub.js" "extension/dist/hub.html" "extension/static/icon.png"; do
+            if [ ! -f "vsix-check/$REQUIRED" ]; then
+              echo "::error::Missing required file in VSIX: $REQUIRED"
+              MISSING=$((MISSING + 1))
+            else
+              echo "  OK: $REQUIRED"
+            fi
+          done
+
+          if [ $MISSING -gt 0 ]; then
+            echo "::error::VSIX validation failed — $MISSING required file(s) missing"
+            exit 1
+          fi
+
+          echo "VSIX validation passed"
+          rm -rf vsix-check
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vsix
+          path: vsix/*.vsix
+          retention-days: 90
+
+  # ─────────────────────────────────────────────
+  # Job 3: Publish to Azure DevOps Marketplace
+  # ─────────────────────────────────────────────
+  publish-marketplace:
+    name: Publish to Marketplace
+    runs-on: ubuntu-latest
+    needs: build-and-package
+    # Publish on tag push, or manual dispatch with publish_marketplace=true
+    if: >-
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
+      || (github.event_name == 'workflow_dispatch' && inputs.publish_marketplace)
+    environment: marketplace
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - run: npm install -g tfx-cli
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: vsix
+          path: vsix/
+
+      - name: Determine visibility
+        id: vis
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "flags=--share-with ${{ inputs.visibility == 'public' && '' || secrets.AZDO_SHARE_ORG }}" >> "$GITHUB_OUTPUT"
+            echo "visibility=${{ inputs.visibility }}" >> "$GITHUB_OUTPUT"
+          else
+            # Tag-based releases default to private for safety
+            echo "visibility=private" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish extension to Marketplace
+        run: |
+          VSIX_FILE=$(ls vsix/*.vsix)
+          echo "Publishing $VSIX_FILE to Azure DevOps Marketplace..."
+
+          npx tfx extension publish \
+            --vsix "$VSIX_FILE" \
+            --token "${{ secrets.AZDO_MARKETPLACE_PAT }}" \
+            --no-prompt
+
+          echo "Extension published successfully!"
+          echo "Marketplace: https://marketplace.visualstudio.com/items?itemName=AnassKartit.pr-tracker-hub"
+
+      - name: Share with organization (private releases)
+        if: steps.vis.outputs.visibility == 'private' && env.AZDO_SHARE_ORG != ''
+        env:
+          AZDO_SHARE_ORG: ${{ secrets.AZDO_SHARE_ORG }}
+        run: |
+          npx tfx extension share \
+            --publisher AnassKartit \
+            --extension-id pr-tracker-hub \
+            --share-with "$AZDO_SHARE_ORG" \
+            --token "${{ secrets.AZDO_MARKETPLACE_PAT }}" \
+            --no-prompt
+          echo "Extension shared with organization: $AZDO_SHARE_ORG"
+
+  # ─────────────────────────────────────────────
+  # Job 4: Create GitHub Release
+  # ─────────────────────────────────────────────
+  github-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: build-and-package
+    # Only create GitHub releases on tag pushes
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: vsix
+          path: vsix/
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ steps.vsix.outputs.file }}
+          files: vsix/*.vsix
           generate_release_notes: true
           body: |
-            ## PR Tracker v${{ steps.version.outputs.version }}
+            ## PR Tracker v${{ needs.build-and-package.outputs.version }}
 
-            ### Install
-            1. Download the `.vsix` file from this release
-            2. Go to Azure DevOps > Organization Settings > Extensions
-            3. Click "Upload extension" and select the downloaded file
+            ### Install from VSIX
+            1. Download the `.vsix` file attached to this release
+            2. Go to **Azure DevOps** > **Organization Settings** > **Extensions**
+            3. Click **Upload extension** and select the downloaded `.vsix` file
+            4. Install the extension to your organization
 
-            ### Marketplace
-            Or install directly from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=AnassKartit.pr-tracker-hub)
+            ### Install from Marketplace
+            Install directly from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=AnassKartit.pr-tracker-hub)
+
+            ### What's in this release
+            - VSIX package: `${{ needs.build-and-package.outputs.vsix_name }}`
+            - Extension version: `${{ needs.build-and-package.outputs.version }}`
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
