@@ -9,10 +9,16 @@ module.exports = {
     filename: "[name].js",
     path: path.resolve(__dirname, "dist"),
     publicPath: "/dist/",
+    libraryTarget: "amd",
   },
   resolve: {
     extensions: [".ts", ".tsx", ".js", ".jsx"],
   },
+  externals: [
+    /^azure-devops-extension-sdk/,
+    /^azure-devops-extension-api/,
+    /^VSS\//,
+  ],
   module: {
     rules: [
       {

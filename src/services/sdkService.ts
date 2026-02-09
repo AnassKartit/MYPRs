@@ -20,11 +20,29 @@ import {
 
 let _initialized = false;
 
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    promise.then(
+      (val) => { clearTimeout(timer); resolve(val); },
+      (err) => { clearTimeout(timer); reject(err); }
+    );
+  });
+}
+
 export async function initializeSDK(): Promise<void> {
   if (_initialized) return;
-  await SDK.init();
-  await SDK.ready();
-  _initialized = true;
+  try {
+    console.log("[PR-Tracker] Starting SDK.init()...");
+    await withTimeout(SDK.init(), 10000, "SDK.init()");
+    console.log("[PR-Tracker] SDK.init() complete. Waiting for SDK.ready()...");
+    await withTimeout(SDK.ready(), 10000, "SDK.ready()");
+    console.log("[PR-Tracker] SDK fully initialized.");
+    _initialized = true;
+  } catch (err) {
+    console.error("[PR-Tracker] SDK initialization failed:", err);
+    throw err;
+  }
 }
 
 export function getOrganizationName(): string {

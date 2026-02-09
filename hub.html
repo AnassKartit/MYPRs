@@ -4,13 +4,16 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="X-Content-Type-Options" content="nosniff" />
-  <meta http-equiv="X-Frame-Options" content="SAMEORIGIN" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https://dev.azure.com https://*.visualstudio.com data:; connect-src https://dev.azure.com https://*.visualstudio.com https://vssps.dev.azure.com; font-src 'self'; frame-ancestors https://dev.azure.com https://*.visualstudio.com" />
   <meta name="referrer" content="no-referrer" />
   <title>PR Tracker</title>
 </head>
 <body>
   <div id="root"></div>
-  <script src="hub.js"></script>
+  <script src="https://cdn.vsassets.io/bundles/vscode/extensions/ms.vss-web.vss-web-platform/content/lib/amd-loader.min.js"></script>
+  <script>
+    require(["hub"], function () {
+      console.log("[PR-Tracker] AMD module loaded.");
+    });
+  </script>
 </body>
 </html>
