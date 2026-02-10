@@ -7,7 +7,6 @@ import {
   IMergeConflict,
   ICommentThread,
 } from "../models/types";
-import * as sdkService from "../services/sdkService";
 import { useT, TFunction } from "../i18n/I18nContext";
 
 interface PRCardProps {
@@ -22,7 +21,6 @@ const PRCard: React.FC<PRCardProps> = ({ pr, onLoadDetails }) => {
     "conflicts"
   );
   const [loadingDetails, setLoadingDetails] = useState(false);
-  const [approving, setApproving] = useState(false);
 
   const hasConflicts = pr.mergeStatus === MergeStatus.Conflicts || pr.mergeConflicts.length > 0;
 
@@ -171,24 +169,6 @@ const PRCard: React.FC<PRCardProps> = ({ pr, onLoadDetails }) => {
         >
           &#128196; {t("pr.viewFiles")}
         </a>
-        <button
-          className={`action-btn action-approve ${approving ? "loading" : ""}`}
-          disabled={approving}
-          onClick={async () => {
-            setApproving(true);
-            try {
-              await sdkService.approvePullRequest(pr.project.name, pr.repository.id, pr.id);
-              if (onLoadDetails) await onLoadDetails(pr);
-            } catch {
-              // API failed — open Azure DevOps approve page as fallback
-              window.open(pr.url, "_blank", "noopener,noreferrer");
-            } finally {
-              setApproving(false);
-            }
-          }}
-        >
-          {approving ? t("pr.approving") : `\u2713 ${t("pr.approve")}`}
-        </button>
         <a
           href={pr.url}
           target="_blank"
