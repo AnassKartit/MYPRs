@@ -21,85 +21,82 @@ const Widget: React.FC = () => {
   const [orgUrl, setOrgUrl] = useState("");
 
   useEffect(() => {
-    const init = async () => {
-      try {
-        await SDK.init({ loaded: false });
-        await SDK.ready();
-        const host = SDK.getHost();
-        setOrgUrl(`https://dev.azure.com/${host.name}`);
+    loadStats();
+  }, []);
 
-        const currentUser = SDK.getUser();
-        const coreClient = getClient(CoreRestClient);
-        const gitClient = getClient(GitRestClient);
-        const projects = await coreClient.getProjects();
+  const loadStats = async () => {
+    try {
+      const host = SDK.getHost();
+      setOrgUrl(`https://dev.azure.com/${host.name}`);
 
-        let total = 0;
-        let approved = 0;
-        let conflicts = 0;
-        let waiting = 0;
-        let needsMyReview = 0;
-        let drafts = 0;
+      const currentUser = SDK.getUser();
+      const coreClient = getClient(CoreRestClient);
+      const gitClient = getClient(GitRestClient);
+      const projects = await coreClient.getProjects();
 
-        const results = await Promise.allSettled(
-          projects.map(async (project) => {
-            try {
-              const repos = await gitClient.getRepositories(project.name!);
-              const repoResults = await Promise.allSettled(
-                repos.map(async (repo) => {
-                  try {
-                    const prs = await gitClient.getPullRequests(
-                      repo.id,
-                      { status: 1, includeLinks: false } as any,
-                      project.name!
-                    );
-                    return prs;
-                  } catch {
-                    return [];
-                  }
-                })
-              );
-              const allPRs: any[] = [];
-              for (const r of repoResults) {
-                if (r.status === "fulfilled") allPRs.push(...r.value);
-              }
-              return allPRs;
-            } catch {
-              return [];
+      let total = 0;
+      let approved = 0;
+      let conflicts = 0;
+      let waiting = 0;
+      let needsMyReview = 0;
+      let drafts = 0;
+
+      const results = await Promise.allSettled(
+        projects.map(async (project) => {
+          try {
+            const repos = await gitClient.getRepositories(project.name!);
+            const repoResults = await Promise.allSettled(
+              repos.map(async (repo) => {
+                try {
+                  const prs = await gitClient.getPullRequests(
+                    repo.id,
+                    { status: 1, includeLinks: false } as any,
+                    project.name!
+                  );
+                  return prs;
+                } catch {
+                  return [];
+                }
+              })
+            );
+            const allPRs: any[] = [];
+            for (const r of repoResults) {
+              if (r.status === "fulfilled") allPRs.push(...r.value);
             }
-          })
-        );
+            return allPRs;
+          } catch {
+            return [];
+          }
+        })
+      );
 
-        for (const result of results) {
-          if (result.status === "fulfilled") {
-            for (const pr of result.value) {
-              total++;
-              if (pr.isDraft) drafts++;
-              if (pr.mergeStatus === 2) conflicts++;
+      for (const result of results) {
+        if (result.status === "fulfilled") {
+          for (const pr of result.value) {
+            total++;
+            if (pr.isDraft) drafts++;
+            if (pr.mergeStatus === 2) conflicts++;
 
-              const reviewers = pr.reviewers || [];
-              const hasApproval = reviewers.some((r: any) => r.vote === 10);
-              const allNoVote = reviewers.length === 0 || reviewers.every((r: any) => r.vote === 0);
+            const reviewers = pr.reviewers || [];
+            const hasApproval = reviewers.some((r: any) => r.vote === 10);
+            const allNoVote = reviewers.length === 0 || reviewers.every((r: any) => r.vote === 0);
 
-              if (hasApproval) approved++;
-              if (allNoVote) waiting++;
-              if (reviewers.some((r: any) => r.id === currentUser.id && r.vote === 0 && !r.hasDeclined)) {
-                needsMyReview++;
-              }
+            if (hasApproval) approved++;
+            if (allNoVote) waiting++;
+            if (reviewers.some((r: any) => r.id === currentUser.id && r.vote === 0 && !r.hasDeclined)) {
+              needsMyReview++;
             }
           }
         }
-
-        setStats({ total, approved, conflicts, waiting, needsMyReview, drafts });
-        SDK.notifyLoadSucceeded();
-      } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
-        SDK.notifyLoadSucceeded();
-      } finally {
-        setLoading(false);
       }
-    };
-    init();
-  }, []);
+
+      setStats({ total, approved, conflicts, waiting, needsMyReview, drafts });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -243,9 +240,39 @@ const styles: Record<string, React.CSSProperties> = {
   },
 };
 
-ReactDOM.render(
-  <React.StrictMode>
-    <Widget />
-  </React.StrictMode>,
-  document.getElementById("widget-root")
-);
+// Render the widget into the DOM
+function renderWidget() {
+  ReactDOM.render(
+    <React.StrictMode>
+      <Widget />
+    </React.StrictMode>,
+    document.getElementById("widget-root")
+  );
+}
+
+// Initialize SDK and register widget contribution for Azure DevOps Dashboard
+SDK.init({
+  loaded: false,
+  applyTheme: true,
+});
+
+SDK.ready().then(() => {
+  // Register the widget with the dashboard framework
+  SDK.register("pr-tracker-widget", () => {
+    return {
+      preload: () => {
+        return { state: 1 }; // WidgetStatusType.Success
+      },
+      load: () => {
+        renderWidget();
+        return { state: 1 }; // WidgetStatusType.Success
+      },
+      reload: () => {
+        renderWidget();
+        return { state: 1 }; // WidgetStatusType.Success
+      },
+    };
+  });
+
+  SDK.notifyLoadSucceeded();
+});
