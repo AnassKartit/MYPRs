@@ -271,6 +271,7 @@ function mapPullRequest(pr: any, projectName: string, repo: any): IPullRequestIt
     mergeStatus: mapMergeStatus(pr.mergeStatus),
     mergeConflicts: [],
     commentCount: pr.commentCount || 0,
+    changedFilesCount: 0,
     url: `https://dev.azure.com/${getContext().organization}/${projectName}/_git/${repo.name}/pullrequest/${pr.pullRequestId}`,
     isDraft: pr.isDraft || false,
     labels: (pr.labels || []).map((l: any) => l.name),

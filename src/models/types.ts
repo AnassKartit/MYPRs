@@ -14,6 +14,7 @@ export interface IPullRequestItem {
   mergeStatus: MergeStatus;
   mergeConflicts: IMergeConflict[];
   commentCount: number;
+  changedFilesCount: number;
   url: string;
   isDraft: boolean;
   labels: string[];

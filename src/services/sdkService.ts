@@ -230,13 +230,31 @@ export async function resolveAvatars(pr: IPullRequestItem): Promise<IPullRequest
   };
 }
 
+export async function getChangedFilesCount(
+  projectName: string,
+  repositoryId: string,
+  pullRequestId: number
+): Promise<number> {
+  const gitClient = getClient(GitRestClient);
+  try {
+    const iterations = await gitClient.getPullRequestIterations(repositoryId, pullRequestId, projectName);
+    if (!iterations || iterations.length === 0) return 0;
+    const lastIteration = iterations[iterations.length - 1];
+    const changes = await gitClient.getPullRequestIterationChanges(repositoryId, pullRequestId, lastIteration.id!, projectName);
+    return changes?.changeEntries?.length || 0;
+  } catch {
+    return 0;
+  }
+}
+
 export async function enrichPullRequestWithDetails(
   pr: IPullRequestItem
 ): Promise<IPullRequestItem> {
-  const [conflicts, threads, resolved] = await Promise.all([
+  const [conflicts, threads, resolved, changedFilesCount] = await Promise.all([
     getMergeConflicts(pr.project.name, pr.repository.id, pr.id),
     getCommentThreads(pr.project.name, pr.repository.id, pr.id),
     resolveAvatars(pr),
+    getChangedFilesCount(pr.project.name, pr.repository.id, pr.id),
   ]);
 
   return {
@@ -247,6 +265,7 @@ export async function enrichPullRequestWithDetails(
     commentCount: threads
       .filter((t) => t.comments.some((c) => c.commentType !== "system"))
       .reduce((sum, t) => sum + t.comments.filter((c) => c.commentType !== "system").length, 0),
+    changedFilesCount,
   };
 }
 
@@ -298,6 +317,7 @@ function mapPullRequest(pr: any, project: IProjectInfo, repo: any): IPullRequest
     mergeStatus: mapMergeStatus(pr.mergeStatus),
     mergeConflicts: [],
     commentCount: 0,
+    changedFilesCount: 0,
     url: `https://dev.azure.com/${orgName}/${project.name}/_git/${repo.name}/pullrequest/${pr.pullRequestId}`,
     isDraft: pr.isDraft || false,
     labels: (pr.labels || []).map((l: any) => l.name),

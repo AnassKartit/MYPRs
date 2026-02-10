@@ -111,6 +111,12 @@ const PRCard: React.FC<PRCardProps> = ({ pr, onLoadDetails }) => {
           </span>
         </div>
 
+        {pr.description && (
+          <div className="pr-card-description">
+            {truncateText(pr.description, 150)}
+          </div>
+        )}
+
         <div className="pr-card-reviewers">
           {pr.reviewers.slice(0, 5).map((reviewer) => (
             <ReviewerAvatar key={reviewer.id} reviewer={reviewer} />
@@ -134,6 +140,11 @@ const PRCard: React.FC<PRCardProps> = ({ pr, onLoadDetails }) => {
           {waitingReviewers.length > 0 && (
             <span className="stat" style={{ color: "#ff8c00" }}>
               &#8987; {waitingReviewers.length}
+            </span>
+          )}
+          {pr.changedFilesCount > 0 && (
+            <span className="stat">
+              &#128196; {pr.changedFilesCount} files
             </span>
           )}
           {pr.commentCount > 0 && (

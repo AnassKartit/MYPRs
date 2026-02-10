@@ -587,6 +587,17 @@ $transition: all 0.2s ease;
     }
   }
 
+  .pr-card-description {
+    font-size: 12px;
+    color: $gray-600;
+    line-height: 1.4;
+    margin-top: 4px;
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .pr-card-reviewers {
     display: flex;
     align-items: center;
