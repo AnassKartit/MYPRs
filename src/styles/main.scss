@@ -64,6 +64,16 @@ $transition: all 0.2s ease;
   100% { transform: scale(1); opacity: 1; }
 }
 
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 6px rgba($primary, 0.4), 0 0 12px rgba($primary, 0.2); }
+  50% { box-shadow: 0 0 14px rgba($primary, 0.7), 0 0 28px rgba($primary, 0.3); }
+}
+
+@keyframes iconSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 // --- CSS Custom Properties (Light theme defaults) ---
 :root {
   --bg-primary: linear-gradient(135deg, #f0f4f8 0%, #e8eef3 100%);
@@ -293,6 +303,66 @@ $transition: all 0.2s ease;
     display: flex;
     gap: 8px;
     align-items: center;
+  }
+}
+
+// --- Theme Toggle Button ---
+.theme-toggle-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid var(--border-color);
+  background: var(--bg-surface);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  position: relative;
+
+  &:hover {
+    border-color: $primary;
+    background: $primary-light;
+    transform: scale(1.1);
+
+    .theme-icon.is-dark svg {
+      animation: iconSpin 0.5s ease;
+    }
+  }
+
+  &.glow {
+    animation: glowPulse 2s ease-in-out infinite;
+    border-color: $primary;
+  }
+
+  .theme-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+
+    &.is-light {
+      color: #6b7280;
+    }
+
+    &.is-dark {
+      color: #f59e0b;
+    }
+  }
+}
+
+.dark-theme .theme-toggle-btn {
+  border-color: #4a4a5e;
+  background: #2a2a3e;
+
+  &:hover {
+    border-color: #f59e0b;
+    background: rgba(245, 158, 11, 0.15);
+  }
+
+  &.glow {
+    animation: glowPulse 2s ease-in-out infinite;
+    border-color: #f59e0b;
   }
 }
 
