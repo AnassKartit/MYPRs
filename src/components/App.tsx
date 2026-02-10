@@ -23,6 +23,7 @@ import NotificationPanel from "./NotificationPanel";
 import "../styles/main.scss";
 
 const AUTO_REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
+const NOTIFICATIONS_STORAGE_KEY = "pr-tracker-notifications";
 
 const defaultFilters: IFilterState = {
   searchText: "",
@@ -45,12 +46,28 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
-  const [notifications, setNotifications] = useState<INotification[]>([]);
+  const [notifications, setNotifications] = useState<INotification[]>(() => {
+    try {
+      const stored = localStorage.getItem(NOTIFICATIONS_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return parsed.map((n: any) => ({ ...n, timestamp: new Date(n.timestamp) }));
+      }
+    } catch {}
+    return [];
+  });
   const [showNotifications, setShowNotifications] = useState(false);
   const [organizationName, setOrganizationName] = useState("");
   const [currentUserId, setCurrentUserId] = useState("");
   const [isDarkTheme, setIsDarkTheme] = useState(false);
   const previousPRsRef = useRef<IPullRequestItem[]>([]);
+
+  // Persist notifications to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(notifications));
+    } catch {}
+  }, [notifications]);
 
   // Initialize SDK and load data
   useEffect(() => {
@@ -124,8 +141,20 @@ const App: React.FC = () => {
       // Enrich PRs with conflict and comment details in batches
       const enrichedPRs = await enrichInBatches(prs, 5);
 
-      // Generate notifications by comparing with previous state
-      if (previousPRsRef.current.length > 0) {
+      // Generate notifications
+      const isFirstLoad = previousPRsRef.current.length === 0;
+      if (isFirstLoad) {
+        // On first load, generate notifications for existing conflicts and rejections
+        const initialNotifications = generateInitialNotifications(enrichedPRs, t);
+        if (initialNotifications.length > 0) {
+          setNotifications((prev) => {
+            const existingIds = new Set(prev.map((n: INotification) => n.id));
+            const fresh = initialNotifications.filter((n) => !existingIds.has(n.id));
+            return fresh.length > 0 ? [...fresh, ...prev].slice(0, 100) : prev;
+          });
+        }
+      } else {
+        // On subsequent refreshes, compare with previous state
         const newNotifications = generateNotifications(enrichedPRs, previousPRsRef.current, t);
         if (newNotifications.length > 0) {
           setNotifications((prev) => [...newNotifications, ...prev].slice(0, 100));
@@ -755,6 +784,54 @@ function generateNotifications(
             isRead: false,
           });
         }
+      }
+    }
+  }
+
+  return notifications;
+}
+
+function generateInitialNotifications(
+  prs: IPullRequestItem[],
+  t: (key: any, params?: Record<string, string | number>) => string
+): INotification[] {
+  const notifications: INotification[] = [];
+
+  for (const pr of prs) {
+    const key = `${pr.project.id}-${pr.id}`;
+
+    // Notify about existing conflicts
+    if (pr.mergeStatus === MergeStatus.Conflicts || pr.mergeConflicts.length > 0) {
+      notifications.push({
+        id: `conflict-${key}`,
+        type: NotificationType.MergeConflict,
+        message: t("notification.mergeConflict", {
+          title: pr.title,
+          project: pr.project.name,
+          repo: pr.repository.name,
+          count: pr.mergeConflicts.length,
+        }),
+        pullRequest: pr,
+        timestamp: new Date(),
+        isRead: false,
+      });
+    }
+
+    // Notify about existing rejections
+    for (const reviewer of pr.reviewers) {
+      if (reviewer.vote === ReviewerVote.Rejected) {
+        notifications.push({
+          id: `rejected-${key}-${reviewer.id}`,
+          type: NotificationType.Rejected,
+          message: t("notification.rejected", {
+            reviewer: reviewer.displayName,
+            title: pr.title,
+            project: pr.project.name,
+          }),
+          pullRequest: pr,
+          timestamp: new Date(),
+          isRead: false,
+        });
       }
     }
   }

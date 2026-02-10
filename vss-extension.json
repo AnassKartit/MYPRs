@@ -112,7 +112,7 @@
       "properties": {
         "name": "PR Tracker",
         "description": "Shows a summary of active pull requests across your organization - total, approved, conflicts, waiting, and PRs needing your review.",
-        "catalogIconUrl:": "static/icon.png",
+        "catalogIconUrl": "static/icon.png",
         "previewImageUrl": "static/icon.png",
         "uri": "dist/widget.html",
         "supportedSizes": [
