@@ -8,6 +8,7 @@ import {
   ICommentThread,
 } from "../models/types";
 import * as sdkService from "../services/sdkService";
+import { useT, TFunction } from "../i18n/I18nContext";
 
 interface PRCardProps {
   pr: IPullRequestItem;
@@ -15,13 +16,13 @@ interface PRCardProps {
 }
 
 const PRCard: React.FC<PRCardProps> = ({ pr, onLoadDetails }) => {
+  const { t } = useT();
   const [expanded, setExpanded] = useState(false);
   const [activeDetailTab, setActiveDetailTab] = useState<"conflicts" | "reviewers" | "comments">(
     "conflicts"
   );
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [approving, setApproving] = useState(false);
-  const [approveError, setApproveError] = useState<string | null>(null);
 
   const hasConflicts = pr.mergeStatus === MergeStatus.Conflicts || pr.mergeConflicts.length > 0;
 
@@ -60,8 +61,8 @@ const PRCard: React.FC<PRCardProps> = ({ pr, onLoadDetails }) => {
             >
               {pr.title}
             </a>
-            {pr.isDraft && <span className="draft-badge">Draft</span>}
-            {pr.hasAutoComplete && <span className="autocomplete-badge">Auto-complete</span>}
+            {pr.isDraft && <span className="draft-badge">{t("pr.draft")}</span>}
+            {pr.hasAutoComplete && <span className="autocomplete-badge">{t("pr.autoComplete")}</span>}
           </h3>
           <div className="pr-card-meta">
             <span className="meta-item">
@@ -74,28 +75,28 @@ const PRCard: React.FC<PRCardProps> = ({ pr, onLoadDetails }) => {
             <span className="meta-separator">|</span>
             <span className="meta-item">#{pr.id}</span>
             <span className="meta-separator">|</span>
-            <span className="meta-item">{formatDate(pr.creationDate)}</span>
+            <span className="meta-item">{formatDate(pr.creationDate, t)}</span>
             <span className="meta-separator">|</span>
             <span className={`age-badge ${getAgeClass(pr.creationDate)}`}>
-              {getAgeLabel(pr.creationDate)}
+              {getAgeLabel(pr.creationDate, t)}
             </span>
           </div>
         </div>
 
         <div className="pr-card-badges">
           <span className={`status-badge status-${pr.status}`}>
-            {getStatusIcon(pr.status)} {capitalizeFirst(pr.status)}
+            {getStatusIcon(pr.status)} {t(`status.${pr.status}` as any)}
           </span>
           {hasConflicts && (
             <span className="status-badge merge-conflicts">
-              &#9888; {pr.mergeConflicts.length || "!"} Conflicts
+              &#9888; {t("pr.conflicts", { count: pr.mergeConflicts.length || 1 })}
             </span>
           )}
           {pr.mergeStatus === MergeStatus.Succeeded && (
-            <span className="status-badge merge-ok">&#10003; Merge OK</span>
+            <span className="status-badge merge-ok">&#10003; {t("pr.mergeOk")}</span>
           )}
           {pr.mergeStatus === MergeStatus.Queued && (
-            <span className="status-badge merge-queued">&#8987; Queued</span>
+            <span className="status-badge merge-queued">&#8987; {t("pr.queued")}</span>
           )}
         </div>
       </div>
@@ -144,7 +145,7 @@ const PRCard: React.FC<PRCardProps> = ({ pr, onLoadDetails }) => {
           )}
           {pr.changedFilesCount > 0 && (
             <span className="stat">
-              &#128196; {pr.changedFilesCount} files
+              &#128196; {t("pr.files", { count: pr.changedFilesCount })}
             </span>
           )}
           {pr.commentCount > 0 && (
@@ -163,30 +164,30 @@ const PRCard: React.FC<PRCardProps> = ({ pr, onLoadDetails }) => {
       {/* Quick Actions */}
       <div className="pr-card-actions" onClick={(e) => e.stopPropagation()}>
         <a
-          href={`${pr.url}?_a=files`}
+          href={getViewFilesUrl(pr)}
           target="_blank"
           rel="noopener noreferrer"
           className="action-btn"
         >
-          &#128196; View Files
+          &#128196; {t("pr.viewFiles")}
         </a>
         <button
           className={`action-btn action-approve ${approving ? "loading" : ""}`}
           disabled={approving}
           onClick={async () => {
             setApproving(true);
-            setApproveError(null);
             try {
               await sdkService.approvePullRequest(pr.project.name, pr.repository.id, pr.id);
               if (onLoadDetails) await onLoadDetails(pr);
-            } catch (err) {
-              setApproveError(err instanceof Error ? err.message : "Failed to approve");
+            } catch {
+              // API failed — open Azure DevOps approve page as fallback
+              window.open(pr.url, "_blank", "noopener,noreferrer");
             } finally {
               setApproving(false);
             }
           }}
         >
-          {approving ? "Approving..." : "\u2713 Approve"}
+          {approving ? t("pr.approving") : `\u2713 ${t("pr.approve")}`}
         </button>
         <a
           href={pr.url}
@@ -194,11 +195,8 @@ const PRCard: React.FC<PRCardProps> = ({ pr, onLoadDetails }) => {
           rel="noopener noreferrer"
           className="action-btn"
         >
-          &#8599; Open in DevOps
+          &#8599; {t("pr.openInDevOps")}
         </a>
-        {approveError && (
-          <span className="action-error">{approveError}</span>
-        )}
       </div>
 
       {/* Expanded Detail View */}
@@ -206,7 +204,7 @@ const PRCard: React.FC<PRCardProps> = ({ pr, onLoadDetails }) => {
         <div className="pr-detail-expanded">
           {loadingDetails ? (
             <div style={{ padding: "20px", textAlign: "center", color: "#9e9e9e" }}>
-              Loading details...
+              {t("pr.loadingDetails")}
             </div>
           ) : (
             <>
@@ -218,7 +216,7 @@ const PRCard: React.FC<PRCardProps> = ({ pr, onLoadDetails }) => {
                     setActiveDetailTab("conflicts");
                   }}
                 >
-                  Conflicts ({pr.mergeConflicts.length})
+                  {t("pr.tab.conflicts", { count: pr.mergeConflicts.length })}
                 </button>
                 <button
                   className={`detail-tab ${activeDetailTab === "reviewers" ? "active" : ""}`}
@@ -227,7 +225,7 @@ const PRCard: React.FC<PRCardProps> = ({ pr, onLoadDetails }) => {
                     setActiveDetailTab("reviewers");
                   }}
                 >
-                  Reviewers ({pr.reviewers.length})
+                  {t("pr.tab.reviewers", { count: pr.reviewers.length })}
                 </button>
                 <button
                   className={`detail-tab ${activeDetailTab === "comments" ? "active" : ""}`}
@@ -236,7 +234,7 @@ const PRCard: React.FC<PRCardProps> = ({ pr, onLoadDetails }) => {
                     setActiveDetailTab("comments");
                   }}
                 >
-                  Comments ({activeThreads.length} active)
+                  {t("pr.tab.comments", { count: activeThreads.length })}
                 </button>
               </div>
 
@@ -260,6 +258,7 @@ const PRCard: React.FC<PRCardProps> = ({ pr, onLoadDetails }) => {
 // --- Sub-components ---
 
 const ReviewerAvatar: React.FC<{ reviewer: IReviewer }> = ({ reviewer }) => {
+  const { t } = useT();
   const voteClass = getVoteClass(reviewer.vote);
   const initials = getInitials(reviewer.displayName);
   const [imgFailed, setImgFailed] = useState(false);
@@ -267,7 +266,7 @@ const ReviewerAvatar: React.FC<{ reviewer: IReviewer }> = ({ reviewer }) => {
   const handleImgError = useCallback(() => setImgFailed(true), []);
 
   return (
-    <div className={`reviewer-avatar ${voteClass}`} title={`${reviewer.displayName}: ${getVoteLabel(reviewer.vote)}`}>
+    <div className={`reviewer-avatar ${voteClass}`} title={`${reviewer.displayName}: ${getVoteLabel(reviewer.vote, t)}`}>
       {reviewer.imageUrl && !imgFailed ? (
         <img
           src={reviewer.imageUrl}
@@ -288,10 +287,12 @@ const ReviewerAvatar: React.FC<{ reviewer: IReviewer }> = ({ reviewer }) => {
 };
 
 const ConflictSection: React.FC<{ conflicts: IMergeConflict[]; pr: IPullRequestItem }> = ({ conflicts, pr }) => {
+  const { t } = useT();
+
   if (conflicts.length === 0) {
     return (
       <div style={{ padding: "16px", textAlign: "center", color: "#9e9e9e", fontSize: "13px" }}>
-        No merge conflicts detected. This PR can be merged cleanly.
+        {t("pr.noConflictsDetail")}
       </div>
     );
   }
@@ -308,7 +309,7 @@ const ConflictSection: React.FC<{ conflicts: IMergeConflict[]; pr: IPullRequestI
     <div className="conflict-panel">
       <div className="conflict-header">
         <span>&#9888;</span>
-        {conflicts.length} Merge Conflict{conflicts.length !== 1 ? "s" : ""} Detected
+        {t("pr.conflictsDetected", { count: conflicts.length })}
       </div>
       <ul className="conflict-list">
         {conflicts.map((conflict) => (
@@ -328,7 +329,7 @@ const ConflictSection: React.FC<{ conflicts: IMergeConflict[]; pr: IPullRequestI
                   conflict.resolutionStatus === "resolved" ? "resolved" : "unresolved"
                 }`}
               >
-                {conflict.resolutionStatus === "resolved" ? "Resolved" : "Unresolved"}
+                {conflict.resolutionStatus === "resolved" ? t("pr.resolved") : t("pr.unresolved")}
               </span>
             </a>
           </li>
@@ -339,17 +340,19 @@ const ConflictSection: React.FC<{ conflicts: IMergeConflict[]; pr: IPullRequestI
 };
 
 const ReviewerSection: React.FC<{ reviewers: IReviewer[] }> = ({ reviewers }) => {
+  const { t } = useT();
+
   if (reviewers.length === 0) {
     return (
       <div style={{ padding: "16px", textAlign: "center", color: "#9e9e9e", fontSize: "13px" }}>
-        No reviewers assigned to this pull request.
+        {t("pr.noReviewers")}
       </div>
     );
   }
 
   return (
     <div className="thread-section">
-      <div className="thread-header">Reviewers</div>
+      <div className="thread-header">{t("pr.reviewersTitle")}</div>
       {reviewers.map((reviewer) => (
         <div key={reviewer.id} className="thread-item">
           <div className={`thread-avatar`} style={{ background: getVoteColor(reviewer.vote) }}>
@@ -360,11 +363,11 @@ const ReviewerSection: React.FC<{ reviewers: IReviewer[] }> = ({ reviewers }) =>
               {reviewer.displayName}
               {reviewer.isRequired && (
                 <span style={{ color: "#d13438", marginLeft: "6px", fontSize: "11px" }}>
-                  (Required)
+                  {t("pr.required")}
                 </span>
               )}
             </div>
-            <div className="thread-text">{getVoteLabel(reviewer.vote)}</div>
+            <div className="thread-text">{getVoteLabel(reviewer.vote, t)}</div>
           </div>
           <span
             className={`thread-status ${
@@ -375,7 +378,7 @@ const ReviewerSection: React.FC<{ reviewers: IReviewer[] }> = ({ reviewers }) =>
                 : "closed"
             }`}
           >
-            {getVoteSymbol(reviewer.vote)} {getVoteLabel(reviewer.vote)}
+            {getVoteSymbol(reviewer.vote)} {getVoteLabel(reviewer.vote, t)}
           </span>
         </div>
       ))}
@@ -384,15 +387,17 @@ const ReviewerSection: React.FC<{ reviewers: IReviewer[] }> = ({ reviewers }) =>
 };
 
 const CommentSection: React.FC<{ threads: ICommentThread[] }> = ({ threads }) => {
+  const { t } = useT();
+
   // Filter out system / non-text threads
   const meaningfulThreads = threads.filter(
-    (t) => t.comments.length > 0 && t.comments.some((c) => c.commentType !== "system")
+    (th) => th.comments.length > 0 && th.comments.some((c) => c.commentType !== "system")
   );
 
   if (meaningfulThreads.length === 0) {
     return (
       <div style={{ padding: "16px", textAlign: "center", color: "#9e9e9e", fontSize: "13px" }}>
-        No comment threads on this pull request.
+        {t("pr.noComments")}
       </div>
     );
   }
@@ -400,8 +405,7 @@ const CommentSection: React.FC<{ threads: ICommentThread[] }> = ({ threads }) =>
   return (
     <div className="thread-section">
       <div className="thread-header">
-        &#128172; {meaningfulThreads.length} Comment Thread
-        {meaningfulThreads.length !== 1 ? "s" : ""}
+        &#128172; {t("pr.commentThreads", { count: meaningfulThreads.length })}
       </div>
       {meaningfulThreads.slice(0, 10).map((thread) => (
         <div key={thread.id} className="thread-item">
@@ -419,20 +423,20 @@ const CommentSection: React.FC<{ threads: ICommentThread[] }> = ({ threads }) =>
             </div>
             <div className="thread-date">
               {thread.comments[0]?.publishedDate
-                ? formatDate(thread.comments[0].publishedDate)
+                ? formatDate(thread.comments[0].publishedDate, t)
                 : ""}
               {thread.comments.length > 1 &&
-                ` (+${thread.comments.length - 1} more replies)`}
+                ` ${t("pr.moreReplies", { count: thread.comments.length - 1 })}`}
             </div>
           </div>
           <span className={`thread-status ${thread.isResolved ? "resolved" : "active"}`}>
-            {thread.isResolved ? "Resolved" : "Active"}
+            {thread.isResolved ? t("pr.threadResolved") : t("pr.threadActive")}
           </span>
         </div>
       ))}
       {meaningfulThreads.length > 10 && (
         <div style={{ padding: "8px", textAlign: "center", color: "#9e9e9e", fontSize: "12px" }}>
-          +{meaningfulThreads.length - 10} more threads
+          {t("pr.moreThreads", { count: meaningfulThreads.length - 10 })}
         </div>
       )}
     </div>
@@ -462,13 +466,13 @@ function getVoteIconClass(vote: ReviewerVote): string {
   }
 }
 
-function getVoteLabel(vote: ReviewerVote): string {
+function getVoteLabel(vote: ReviewerVote, t: TFunction): string {
   switch (vote) {
-    case ReviewerVote.Approved: return "Approved";
-    case ReviewerVote.ApprovedWithSuggestions: return "Approved with suggestions";
-    case ReviewerVote.Rejected: return "Rejected";
-    case ReviewerVote.WaitingForAuthor: return "Waiting for author";
-    default: return "No vote";
+    case ReviewerVote.Approved: return t("vote.approved");
+    case ReviewerVote.ApprovedWithSuggestions: return t("vote.approvedWithSuggestions");
+    case ReviewerVote.Rejected: return t("vote.rejected");
+    case ReviewerVote.WaitingForAuthor: return t("vote.waitingForAuthor");
+    default: return t("vote.noVote");
   }
 }
 
@@ -511,20 +515,16 @@ function getInitials(name: string): string {
     .slice(0, 2);
 }
 
-function capitalizeFirst(str: string): string {
-  return str.charAt(0).toUpperCase() + str.slice(1);
-}
-
-function formatDate(date: Date): string {
+function formatDate(date: Date, t: TFunction): string {
   if (!(date instanceof Date) || isNaN(date.getTime())) return "";
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffHours = diffMs / (1000 * 60 * 60);
 
-  if (diffHours < 1) return `${Math.floor(diffMs / (1000 * 60))}m ago`;
-  if (diffHours < 24) return `${Math.floor(diffHours)}h ago`;
-  if (diffHours < 48) return "Yesterday";
-  if (diffHours < 168) return `${Math.floor(diffHours / 24)}d ago`;
+  if (diffHours < 1) return t("time.minutesAgo", { count: Math.floor(diffMs / (1000 * 60)) });
+  if (diffHours < 24) return t("time.hoursAgo", { count: Math.floor(diffHours) });
+  if (diffHours < 48) return t("time.yesterday");
+  if (diffHours < 168) return t("time.daysAgo", { count: Math.floor(diffHours / 24) });
 
   return date.toLocaleDateString("en-US", {
     month: "short",
@@ -543,13 +543,13 @@ function getAgeDays(date: Date): number {
   return Math.floor((Date.now() - date.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-function getAgeLabel(date: Date): string {
+function getAgeLabel(date: Date, t: TFunction): string {
   const days = getAgeDays(date);
-  if (days === 0) return "Today";
-  if (days === 1) return "1 day";
-  if (days < 7) return `${days} days`;
-  if (days < 30) return `${Math.floor(days / 7)}w`;
-  return `${Math.floor(days / 30)}mo`;
+  if (days === 0) return t("age.today");
+  if (days === 1) return t("age.oneDay");
+  if (days < 7) return t("age.days", { count: days });
+  if (days < 30) return t("age.weeks", { count: Math.floor(days / 7) });
+  return t("age.months", { count: Math.floor(days / 30) });
 }
 
 function getAgeClass(date: Date): string {
@@ -557,6 +557,17 @@ function getAgeClass(date: Date): string {
   if (days < 2) return "age-fresh";
   if (days <= 5) return "age-aging";
   return "age-stale";
+}
+
+function getViewFilesUrl(pr: IPullRequestItem): string {
+  if (pr.mergeConflicts.length > 0) {
+    let filePath = pr.mergeConflicts[0].conflictPath || pr.mergeConflicts[0].sourceFilePath;
+    if (filePath && !filePath.startsWith("/")) {
+      filePath = "/" + filePath;
+    }
+    return `${pr.url}?_a=files&path=${encodeURIComponent(filePath)}`;
+  }
+  return `${pr.url}?_a=files`;
 }
 
 export default PRCard;

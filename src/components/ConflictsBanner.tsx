@@ -1,5 +1,6 @@
 import React from "react";
 import { IPullRequestItem, MergeStatus } from "../models/types";
+import { useT } from "../i18n/I18nContext";
 
 interface ConflictsBannerProps {
   pullRequests: IPullRequestItem[];
@@ -10,6 +11,8 @@ const ConflictsBanner: React.FC<ConflictsBannerProps> = ({
   pullRequests,
   onShowConflicts,
 }) => {
+  const { t } = useT();
+
   const conflictPRs = pullRequests.filter(
     (pr) => pr.mergeStatus === MergeStatus.Conflicts || pr.mergeConflicts.length > 0
   );
@@ -27,19 +30,18 @@ const ConflictsBanner: React.FC<ConflictsBannerProps> = ({
         <div className="banner-icon">&#9888;&#65039;</div>
         <div className="banner-text">
           <h4>
-            {conflictPRs.length} Pull Request{conflictPRs.length !== 1 ? "s" : ""} with
-            Merge Conflicts
+            {t("banner.prsWithConflicts", { count: conflictPRs.length })}
           </h4>
           <p>
             {totalConflictFiles > 0
-              ? `${totalConflictFiles} conflicting file${totalConflictFiles !== 1 ? "s" : ""} detected across your PRs. `
+              ? t("banner.conflictingFiles", { count: totalConflictFiles })
               : ""}
-            Resolve conflicts to unblock merges.
+            {t("banner.resolveConflicts")}
           </p>
         </div>
       </div>
       <button className="btn btn-primary" onClick={onShowConflicts}>
-        View Conflicts
+        {t("banner.viewConflicts")}
       </button>
     </div>
   );

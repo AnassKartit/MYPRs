@@ -1,5 +1,6 @@
 import React from "react";
 import { IFilterState, IProjectInfo } from "../models/types";
+import { useT } from "../i18n/I18nContext";
 
 interface FilterBarProps {
   filters: IFilterState;
@@ -14,13 +15,15 @@ const FilterBar: React.FC<FilterBarProps> = ({
   projects,
   repositories,
 }) => {
+  const { t } = useT();
+
   return (
     <div className="filter-bar">
       <div className="filter-search">
         <span className="search-icon">&#128269;</span>
         <input
           type="text"
-          placeholder="Search pull requests by title, author, branch..."
+          placeholder={t("filter.search")}
           value={filters.searchText}
           onChange={(e) => onFilterChange({ searchText: e.target.value })}
         />
@@ -31,10 +34,10 @@ const FilterBar: React.FC<FilterBarProps> = ({
           value={filters.status}
           onChange={(e) => onFilterChange({ status: e.target.value })}
         >
-          <option value="all">All Status</option>
-          <option value="active">Active</option>
-          <option value="completed">Completed</option>
-          <option value="abandoned">Abandoned</option>
+          <option value="all">{t("filter.allStatus")}</option>
+          <option value="active">{t("filter.active")}</option>
+          <option value="completed">{t("filter.completed")}</option>
+          <option value="abandoned">{t("filter.abandoned")}</option>
         </select>
       </div>
 
@@ -43,7 +46,7 @@ const FilterBar: React.FC<FilterBarProps> = ({
           value={filters.project}
           onChange={(e) => onFilterChange({ project: e.target.value })}
         >
-          <option value="all">All Projects</option>
+          <option value="all">{t("filter.allProjects")}</option>
           {projects.map((p) => (
             <option key={p.id} value={p.name}>
               {p.name}
@@ -57,9 +60,9 @@ const FilterBar: React.FC<FilterBarProps> = ({
           value={filters.hasConflicts}
           onChange={(e) => onFilterChange({ hasConflicts: e.target.value })}
         >
-          <option value="all">All Merge Status</option>
-          <option value="conflicts">Has Conflicts</option>
-          <option value="clean">No Conflicts</option>
+          <option value="all">{t("filter.allMergeStatus")}</option>
+          <option value="conflicts">{t("filter.hasConflicts")}</option>
+          <option value="clean">{t("filter.noConflicts")}</option>
         </select>
       </div>
 
@@ -68,11 +71,11 @@ const FilterBar: React.FC<FilterBarProps> = ({
           value={filters.sortBy}
           onChange={(e) => onFilterChange({ sortBy: e.target.value })}
         >
-          <option value="date">Sort by Date</option>
-          <option value="title">Sort by Title</option>
-          <option value="project">Sort by Project</option>
-          <option value="conflicts">Sort by Conflicts</option>
-          <option value="reviewers">Sort by Review Status</option>
+          <option value="date">{t("filter.sortByDate")}</option>
+          <option value="title">{t("filter.sortByTitle")}</option>
+          <option value="project">{t("filter.sortByProject")}</option>
+          <option value="conflicts">{t("filter.sortByConflicts")}</option>
+          <option value="reviewers">{t("filter.sortByReview")}</option>
         </select>
       </div>
 
@@ -83,7 +86,7 @@ const FilterBar: React.FC<FilterBarProps> = ({
             sortDirection: filters.sortDirection === "asc" ? "desc" : "asc",
           })
         }
-        title={filters.sortDirection === "asc" ? "Ascending" : "Descending"}
+        title={filters.sortDirection === "asc" ? t("filter.ascending") : t("filter.descending")}
       >
         {filters.sortDirection === "asc" ? "\u2191" : "\u2193"}
       </button>

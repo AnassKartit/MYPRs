@@ -12,6 +12,7 @@ import {
   NotificationType,
 } from "../models/types";
 import * as sdkService from "../services/sdkService";
+import { useT } from "../i18n/I18nContext";
 import Header from "./Header";
 import FilterBar from "./FilterBar";
 import StatsCards from "./StatsCards";
@@ -36,6 +37,7 @@ const defaultFilters: IFilterState = {
 };
 
 const App: React.FC = () => {
+  const { t } = useT();
   const [pullRequests, setPullRequests] = useState<IPullRequestItem[]>([]);
   const [projects, setProjects] = useState<IProjectInfo[]>([]);
   const [filters, setFilters] = useState<IFilterState>(defaultFilters);
@@ -90,7 +92,7 @@ const App: React.FC = () => {
 
       // Generate notifications by comparing with previous state
       if (previousPRsRef.current.length > 0) {
-        const newNotifications = generateNotifications(enrichedPRs, previousPRsRef.current);
+        const newNotifications = generateNotifications(enrichedPRs, previousPRsRef.current, t);
         if (newNotifications.length > 0) {
           setNotifications((prev) => [...newNotifications, ...prev].slice(0, 100));
         }
@@ -106,7 +108,7 @@ const App: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const enrichInBatches = async (
     prs: IPullRequestItem[],
@@ -177,21 +179,21 @@ const App: React.FC = () => {
               className={`nav-tab ${viewMode === "all" ? "active" : ""}`}
               onClick={() => setViewMode("all")}
             >
-              &#128203; All PRs
+              &#128203; {t("nav.allPRs")}
               <span className="tab-badge">{pullRequests.length}</span>
             </button>
             <button
               className={`nav-tab ${viewMode === "byProject" ? "active" : ""}`}
               onClick={() => setViewMode("byProject")}
             >
-              &#128193; By Project
+              &#128193; {t("nav.byProject")}
               <span className="tab-badge">{projectGroups.length}</span>
             </button>
             <button
               className={`nav-tab ${viewMode === "conflicts" ? "active" : ""}`}
               onClick={() => setViewMode("conflicts")}
             >
-              &#9888; Conflicts
+              &#9888; {t("nav.conflicts")}
               {conflictPRs.length > 0 && (
                 <span className="tab-badge">{conflictPRs.length}</span>
               )}
@@ -200,13 +202,13 @@ const App: React.FC = () => {
 
           <div className="nav-actions">
             <button className="btn" onClick={() => loadData()}>
-              &#8635; Refresh
+              &#8635; {t("nav.refresh")}
             </button>
             <button
               className="btn btn-notification"
               onClick={() => setShowNotifications(true)}
             >
-              &#128276; Notifications
+              &#128276; {t("nav.notifications")}
               {unreadNotifications > 0 && <span className="notification-dot" />}
             </button>
           </div>
@@ -226,12 +228,12 @@ const App: React.FC = () => {
             <div className="banner-content">
               <div className="banner-icon">&#9888;</div>
               <div className="banner-text">
-                <h4 style={{ color: "#ff8c00" }}>Error</h4>
+                <h4 style={{ color: "#ff8c00" }}>{t("error.title")}</h4>
                 <p style={{ color: "#795000" }}>{error}</p>
               </div>
             </div>
             <button className="btn btn-primary" onClick={() => loadData()}>
-              Retry
+              {t("error.retry")}
             </button>
           </div>
         )}
@@ -303,12 +305,14 @@ const AllPRsView: React.FC<{
   pullRequests: IPullRequestItem[];
   onLoadDetails: (pr: IPullRequestItem) => Promise<void>;
 }> = ({ pullRequests, onLoadDetails }) => {
+  const { t } = useT();
+
   if (pullRequests.length === 0) {
     return (
       <div className="empty-state">
         <div className="empty-icon">&#128269;</div>
-        <h3>No pull requests found</h3>
-        <p>Try adjusting your filters or check back later.</p>
+        <h3>{t("empty.noPRs")}</h3>
+        <p>{t("empty.noPRsHint")}</p>
       </div>
     );
   }
@@ -330,12 +334,14 @@ const ProjectView: React.FC<{
   groups: IProjectGroup[];
   onLoadDetails: (pr: IPullRequestItem) => Promise<void>;
 }> = ({ groups, onLoadDetails }) => {
+  const { t } = useT();
+
   if (groups.length === 0) {
     return (
       <div className="empty-state">
         <div className="empty-icon">&#128193;</div>
-        <h3>No projects with pull requests</h3>
-        <p>No active pull requests were found across your projects.</p>
+        <h3>{t("empty.noProjects")}</h3>
+        <p>{t("empty.noProjectsHint")}</p>
       </div>
     );
   }
@@ -357,12 +363,14 @@ const ConflictsView: React.FC<{
   pullRequests: IPullRequestItem[];
   onLoadDetails: (pr: IPullRequestItem) => Promise<void>;
 }> = ({ pullRequests, onLoadDetails }) => {
+  const { t } = useT();
+
   if (pullRequests.length === 0) {
     return (
       <div className="empty-state">
         <div className="empty-icon">&#10024;</div>
-        <h3>No merge conflicts</h3>
-        <p>All your pull requests are conflict-free. Great job!</p>
+        <h3>{t("empty.noConflicts")}</h3>
+        <p>{t("empty.noConflictsHint")}</p>
       </div>
     );
   }
@@ -379,11 +387,11 @@ const ConflictsView: React.FC<{
           <div className="banner-icon">&#9888;&#65039;</div>
           <div className="banner-text">
             <h4>
-              {pullRequests.length} PR{pullRequests.length !== 1 ? "s" : ""} with Merge Conflicts
+              {t("conflictsView.summary", { count: pullRequests.length })}
             </h4>
             <p>
-              {totalConflictFiles} conflicting file{totalConflictFiles !== 1 ? "s" : ""} total.
-              Click on a PR to see detailed conflict information.
+              {t("conflictsView.files", { count: totalConflictFiles })}{" "}
+              {t("conflictsView.clickHint")}
             </p>
           </div>
         </div>
@@ -400,31 +408,35 @@ const ConflictsView: React.FC<{
   );
 };
 
-const LoadingState: React.FC = () => (
-  <div>
-    <div className="stats-summary">
-      {[1, 2, 3, 4, 5, 6].map((i) => (
-        <div key={i} className="skeleton-card" style={{ padding: "20px" }}>
-          <div className="skeleton-line short" />
-          <div className="skeleton-line" style={{ height: "28px", width: "60px" }} />
+const LoadingState: React.FC = () => {
+  const { t } = useT();
+
+  return (
+    <div>
+      <div className="stats-summary">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <div key={i} className="skeleton-card" style={{ padding: "20px" }}>
+            <div className="skeleton-line short" />
+            <div className="skeleton-line" style={{ height: "28px", width: "60px" }} />
+            <div className="skeleton-line short" />
+          </div>
+        ))}
+      </div>
+      {[1, 2, 3, 4].map((i) => (
+        <div key={i} className="skeleton-card">
+          <div className="skeleton-line long" />
+          <div className="skeleton-line medium" />
           <div className="skeleton-line short" />
         </div>
       ))}
-    </div>
-    {[1, 2, 3, 4].map((i) => (
-      <div key={i} className="skeleton-card">
-        <div className="skeleton-line long" />
-        <div className="skeleton-line medium" />
-        <div className="skeleton-line short" />
+      <div className="loading-container">
+        <div className="loading-spinner" />
+        <div className="loading-text">{t("loading.title")}</div>
+        <div className="loading-subtext">{t("loading.subtitle")}</div>
       </div>
-    ))}
-    <div className="loading-container">
-      <div className="loading-spinner" />
-      <div className="loading-text">Loading pull requests...</div>
-      <div className="loading-subtext">Scanning all projects in your organization</div>
     </div>
-  </div>
-);
+  );
+};
 
 // --- Utility Functions ---
 
@@ -537,7 +549,8 @@ function groupByProject(prs: IPullRequestItem[]): IProjectGroup[] {
 
 function generateNotifications(
   current: IPullRequestItem[],
-  previous: IPullRequestItem[]
+  previous: IPullRequestItem[],
+  t: (key: any, params?: Record<string, string | number>) => string
 ): INotification[] {
   const notifications: INotification[] = [];
   const prevMap = new Map(previous.map((pr) => [`${pr.project.id}-${pr.id}`, pr]));
@@ -554,7 +567,12 @@ function generateNotifications(
         notifications.push({
           id: `conflict-${key}-${Date.now()}`,
           type: NotificationType.MergeConflict,
-          message: `Merge conflicts detected in "${pr.title}" (${pr.project.name}/${pr.repository.name}) - ${pr.mergeConflicts.length} file(s) affected`,
+          message: t("notification.mergeConflict", {
+            title: pr.title,
+            project: pr.project.name,
+            repo: pr.repository.name,
+            count: pr.mergeConflicts.length,
+          }),
           pullRequest: pr,
           timestamp: new Date(),
           isRead: false,
@@ -572,7 +590,11 @@ function generateNotifications(
           notifications.push({
             id: `approved-${key}-${reviewer.id}-${Date.now()}`,
             type: NotificationType.Approved,
-            message: `${reviewer.displayName} approved "${pr.title}" in ${pr.project.name}`,
+            message: t("notification.approved", {
+              reviewer: reviewer.displayName,
+              title: pr.title,
+              project: pr.project.name,
+            }),
             pullRequest: pr,
             timestamp: new Date(),
             isRead: false,
@@ -585,7 +607,11 @@ function generateNotifications(
           notifications.push({
             id: `rejected-${key}-${reviewer.id}-${Date.now()}`,
             type: NotificationType.Rejected,
-            message: `${reviewer.displayName} rejected "${pr.title}" in ${pr.project.name}`,
+            message: t("notification.rejected", {
+              reviewer: reviewer.displayName,
+              title: pr.title,
+              project: pr.project.name,
+            }),
             pullRequest: pr,
             timestamp: new Date(),
             isRead: false,

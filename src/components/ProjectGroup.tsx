@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { IProjectGroup, IPullRequestItem, MergeStatus, ReviewerVote } from "../models/types";
 import PRCard from "./PRCard";
+import { useT } from "../i18n/I18nContext";
 
 interface ProjectGroupProps {
   group: IProjectGroup;
@@ -9,6 +10,7 @@ interface ProjectGroupProps {
 
 const ProjectGroup: React.FC<ProjectGroupProps> = ({ group, onLoadDetails }) => {
   const [collapsed, setCollapsed] = useState(false);
+  const { t } = useT();
 
   const conflictCount = group.pullRequests.filter(
     (pr) => pr.mergeStatus === MergeStatus.Conflicts || pr.mergeConflicts.length > 0
@@ -33,7 +35,7 @@ const ProjectGroup: React.FC<ProjectGroupProps> = ({ group, onLoadDetails }) => 
           <div>
             <div className="project-name">{group.project.name}</div>
             <div className="project-pr-count">
-              {group.pullRequests.length} pull request{group.pullRequests.length !== 1 ? "s" : ""}
+              {t("project.pullRequests", { count: group.pullRequests.length })}
             </div>
           </div>
         </div>
@@ -42,22 +44,22 @@ const ProjectGroup: React.FC<ProjectGroupProps> = ({ group, onLoadDetails }) => 
           <div className="project-stats">
             {approvedCount > 0 && (
               <span className="project-stat approved">
-                &#10003; {approvedCount} Approved
+                &#10003; {t("project.approved", { count: approvedCount })}
               </span>
             )}
             {waitingCount > 0 && (
               <span className="project-stat waiting">
-                &#8987; {waitingCount} Waiting
+                &#8987; {t("project.waiting", { count: waitingCount })}
               </span>
             )}
             {conflictCount > 0 && (
               <span className="project-stat conflicts">
-                &#9888; {conflictCount} Conflicts
+                &#9888; {t("project.conflicts", { count: conflictCount })}
               </span>
             )}
             {rejectedCount > 0 && (
               <span className="project-stat rejected">
-                &#10007; {rejectedCount} Rejected
+                &#10007; {t("project.rejected", { count: rejectedCount })}
               </span>
             )}
           </div>
