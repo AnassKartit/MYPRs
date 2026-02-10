@@ -4,6 +4,7 @@ const CopyWebpackPlugin = require("copy-webpack-plugin");
 module.exports = {
   entry: {
     hub: "./src/hub.tsx",
+    widget: "./src/widget.tsx",
   },
   output: {
     filename: "[name].js",
@@ -44,6 +45,7 @@ module.exports = {
       patterns: [
         { from: "static", to: "static" },
         { from: "hub.html", to: "hub.html" },
+        { from: "widget.html", to: "widget.html" },
       ],
     }),
   ],

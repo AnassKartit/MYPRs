@@ -78,6 +78,15 @@ export function getOrganizationName(): string {
   return host.name;
 }
 
+export function getCurrentUser(): { id: string; displayName: string; uniqueName: string } {
+  const user = SDK.getUser();
+  return {
+    id: user.id,
+    displayName: user.displayName,
+    uniqueName: (user as any).uniqueName || user.displayName,
+  };
+}
+
 export async function getAccessToken(): Promise<string> {
   const token = await SDK.getAccessToken();
   return token;

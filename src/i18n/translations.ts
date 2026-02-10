@@ -10,6 +10,8 @@ const en = {
 
   // Navigation
   "nav.allPRs": "All PRs",
+  "nav.needsMyReview": "Needs My Review",
+  "nav.createdByMe": "Created by Me",
   "nav.byProject": "By Project",
   "nav.conflicts": "Conflicts",
   "nav.refresh": "Refresh",
@@ -22,6 +24,10 @@ const en = {
   "loading.subtitle": "Scanning all projects in your organization",
   "empty.noPRs": "No pull requests found",
   "empty.noPRsHint": "Try adjusting your filters or check back later.",
+  "empty.noReviewPRs": "No pull requests need your review",
+  "empty.noReviewPRsHint": "You're all caught up! No PRs are waiting for your review.",
+  "empty.noMyPRs": "You haven't created any pull requests",
+  "empty.noMyPRsHint": "Pull requests you create will appear here.",
   "empty.noProjects": "No projects with pull requests",
   "empty.noProjectsHint": "No active pull requests were found across your projects.",
   "empty.noConflicts": "No merge conflicts",
@@ -177,6 +183,8 @@ const fr: Record<TranslationKey, string> = {
 
   // Navigation
   "nav.allPRs": "Toutes les PRs",
+  "nav.needsMyReview": "En attente de ma revue",
+  "nav.createdByMe": "Cr\u00e9\u00e9es par moi",
   "nav.byProject": "Par projet",
   "nav.conflicts": "Conflits",
   "nav.refresh": "Actualiser",
@@ -189,6 +197,10 @@ const fr: Record<TranslationKey, string> = {
   "loading.subtitle": "Analyse de tous les projets de votre organisation",
   "empty.noPRs": "Aucune pull request trouv\u00e9e",
   "empty.noPRsHint": "Essayez de modifier vos filtres ou revenez plus tard.",
+  "empty.noReviewPRs": "Aucune pull request en attente de votre revue",
+  "empty.noReviewPRsHint": "Vous \u00eates \u00e0 jour ! Aucune PR n'attend votre revue.",
+  "empty.noMyPRs": "Vous n'avez cr\u00e9\u00e9 aucune pull request",
+  "empty.noMyPRsHint": "Les pull requests que vous cr\u00e9ez appara\u00eetront ici.",
   "empty.noProjects": "Aucun projet avec des pull requests",
   "empty.noProjectsHint": "Aucune pull request active trouv\u00e9e dans vos projets.",
   "empty.noConflicts": "Aucun conflit de fusion",

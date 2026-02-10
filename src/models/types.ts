@@ -137,4 +137,4 @@ export enum NotificationType {
   StatusChanged = "statusChanged",
 }
 
-export type ViewMode = "all" | "byProject" | "conflicts" | "notifications";
+export type ViewMode = "all" | "needsMyReview" | "createdByMe" | "byProject" | "conflicts" | "notifications";

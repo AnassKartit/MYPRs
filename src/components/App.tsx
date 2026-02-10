@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   IPullRequestItem,
   IProjectInfo,
@@ -48,6 +48,8 @@ const App: React.FC = () => {
   const [notifications, setNotifications] = useState<INotification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [organizationName, setOrganizationName] = useState("");
+  const [currentUserId, setCurrentUserId] = useState("");
+  const [isDarkTheme, setIsDarkTheme] = useState(false);
   const previousPRsRef = useRef<IPullRequestItem[]>([]);
 
   // Initialize SDK and load data
@@ -56,6 +58,19 @@ const App: React.FC = () => {
       try {
         await sdkService.initializeSDK();
         setOrganizationName(sdkService.getOrganizationName());
+        const user = sdkService.getCurrentUser();
+        setCurrentUserId(user.id);
+
+        // Detect dark theme from SDK-injected CSS variables
+        const textColor = getComputedStyle(document.body).getPropertyValue("--text-primary-color").trim();
+        if (textColor) {
+          const r = parseInt(textColor.slice(1, 3), 16) || 0;
+          const g = parseInt(textColor.slice(3, 5), 16) || 0;
+          const b = parseInt(textColor.slice(5, 7), 16) || 0;
+          const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+          setIsDarkTheme(luminance > 0.5);
+        }
+
         await loadData();
       } catch (err) {
         setError(
@@ -65,6 +80,25 @@ const App: React.FC = () => {
       }
     };
     init();
+  }, []);
+
+  // Listen for Azure DevOps theme changes
+  useEffect(() => {
+    const handleThemeChange = (e: any) => {
+      const data = e.detail;
+      if (data && data.theme) {
+        const textColor = data.theme["text-primary-color"] || "";
+        if (textColor) {
+          const r = parseInt(textColor.slice(1, 3), 16) || 0;
+          const g = parseInt(textColor.slice(3, 5), 16) || 0;
+          const b = parseInt(textColor.slice(5, 7), 16) || 0;
+          const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+          setIsDarkTheme(luminance > 0.5);
+        }
+      }
+    };
+    window.addEventListener("themeChanged", handleThemeChange);
+    return () => window.removeEventListener("themeChanged", handleThemeChange);
   }, []);
 
   // Auto-refresh
@@ -155,6 +189,20 @@ const App: React.FC = () => {
   // Group by project
   const projectGroups = groupByProject(sortedPRs);
 
+  // Needs My Review PRs
+  const needsMyReviewPRs = sortedPRs.filter(
+    (pr) =>
+      currentUserId &&
+      pr.reviewers.some(
+        (r) => r.id === currentUserId && r.vote === ReviewerVote.NoVote && !r.hasDeclined
+      )
+  );
+
+  // Created by Me PRs
+  const createdByMePRs = sortedPRs.filter(
+    (pr) => currentUserId && pr.createdBy.id === currentUserId
+  );
+
   // Conflict PRs
   const conflictPRs = sortedPRs.filter(
     (pr) => pr.mergeStatus === MergeStatus.Conflicts || pr.mergeConflicts.length > 0
@@ -164,7 +212,7 @@ const App: React.FC = () => {
   const repositories = [...new Set(pullRequests.map((pr) => pr.repository.name))].sort();
 
   return (
-    <div className="pr-tracker">
+    <div className={`pr-tracker ${isDarkTheme ? "dark-theme" : ""}`}>
       <Header
         pullRequests={pullRequests}
         organizationName={organizationName}
@@ -181,6 +229,24 @@ const App: React.FC = () => {
             >
               &#128203; {t("nav.allPRs")}
               <span className="tab-badge">{pullRequests.length}</span>
+            </button>
+            <button
+              className={`nav-tab ${viewMode === "needsMyReview" ? "active" : ""}`}
+              onClick={() => setViewMode("needsMyReview")}
+            >
+              &#128064; {t("nav.needsMyReview")}
+              {needsMyReviewPRs.length > 0 && (
+                <span className="tab-badge">{needsMyReviewPRs.length}</span>
+              )}
+            </button>
+            <button
+              className={`nav-tab ${viewMode === "createdByMe" ? "active" : ""}`}
+              onClick={() => setViewMode("createdByMe")}
+            >
+              &#128100; {t("nav.createdByMe")}
+              {createdByMePRs.length > 0 && (
+                <span className="tab-badge">{createdByMePRs.length}</span>
+              )}
             </button>
             <button
               className={`nav-tab ${viewMode === "byProject" ? "active" : ""}`}
@@ -269,6 +335,20 @@ const App: React.FC = () => {
               />
             )}
 
+            {viewMode === "needsMyReview" && (
+              <NeedsMyReviewView
+                pullRequests={needsMyReviewPRs}
+                onLoadDetails={handleLoadDetails}
+              />
+            )}
+
+            {viewMode === "createdByMe" && (
+              <CreatedByMeView
+                pullRequests={createdByMePRs}
+                onLoadDetails={handleLoadDetails}
+              />
+            )}
+
             {viewMode === "byProject" && (
               <ProjectView
                 groups={projectGroups}
@@ -313,6 +393,64 @@ const AllPRsView: React.FC<{
         <div className="empty-icon">&#128269;</div>
         <h3>{t("empty.noPRs")}</h3>
         <p>{t("empty.noPRsHint")}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {pullRequests.map((pr) => (
+        <PRCard
+          key={`${pr.project.id}-${pr.id}`}
+          pr={pr}
+          onLoadDetails={onLoadDetails}
+        />
+      ))}
+    </div>
+  );
+};
+
+const NeedsMyReviewView: React.FC<{
+  pullRequests: IPullRequestItem[];
+  onLoadDetails: (pr: IPullRequestItem) => Promise<void>;
+}> = ({ pullRequests, onLoadDetails }) => {
+  const { t } = useT();
+
+  if (pullRequests.length === 0) {
+    return (
+      <div className="empty-state">
+        <div className="empty-icon">&#9989;</div>
+        <h3>{t("empty.noReviewPRs")}</h3>
+        <p>{t("empty.noReviewPRsHint")}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {pullRequests.map((pr) => (
+        <PRCard
+          key={`${pr.project.id}-${pr.id}`}
+          pr={pr}
+          onLoadDetails={onLoadDetails}
+        />
+      ))}
+    </div>
+  );
+};
+
+const CreatedByMeView: React.FC<{
+  pullRequests: IPullRequestItem[];
+  onLoadDetails: (pr: IPullRequestItem) => Promise<void>;
+}> = ({ pullRequests, onLoadDetails }) => {
+  const { t } = useT();
+
+  if (pullRequests.length === 0) {
+    return (
+      <div className="empty-state">
+        <div className="empty-icon">&#128100;</div>
+        <h3>{t("empty.noMyPRs")}</h3>
+        <p>{t("empty.noMyPRsHint")}</p>
       </div>
     );
   }

@@ -64,11 +64,59 @@ $transition: all 0.2s ease;
   100% { transform: scale(1); opacity: 1; }
 }
 
+// --- CSS Custom Properties (Light theme defaults) ---
+:root {
+  --bg-primary: linear-gradient(135deg, #f0f4f8 0%, #e8eef3 100%);
+  --bg-surface: #ffffff;
+  --bg-surface-hover: #{$gray-50};
+  --bg-input: #{$gray-50};
+  --text-primary: #{$gray-900};
+  --text-secondary: #{$gray-600};
+  --text-tertiary: #{$gray-500};
+  --text-quaternary: #{$gray-400};
+  --border-color: #{$gray-200};
+  --border-color-light: #{$gray-100};
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --skeleton-base: #{$gray-200};
+  --skeleton-shine: #{$gray-100};
+  --branch-bg: #{$gray-100};
+  --branch-color: #{$gray-700};
+  --overlay-bg: rgba(0, 0, 0, 0.3);
+  --scrollbar-color: #{$gray-300};
+  --scrollbar-hover: #{$gray-400};
+}
+
+// --- Dark Theme ---
+.dark-theme {
+  --bg-primary: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  --bg-surface: #1e1e2e;
+  --bg-surface-hover: #2a2a3e;
+  --bg-input: #2a2a3e;
+  --text-primary: #e0e0e0;
+  --text-secondary: #b0b0b0;
+  --text-tertiary: #8888a0;
+  --text-quaternary: #666680;
+  --border-color: #3a3a4e;
+  --border-color-light: #2e2e42;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --skeleton-base: #2a2a3e;
+  --skeleton-shine: #3a3a4e;
+  --branch-bg: #2a2a3e;
+  --branch-color: #b0b0b0;
+  --overlay-bg: rgba(0, 0, 0, 0.6);
+  --scrollbar-color: #3a3a4e;
+  --scrollbar-hover: #4a4a5e;
+}
+
 // --- Base ---
 .pr-tracker {
   font-family: $font-family;
-  color: $gray-900;
-  background: linear-gradient(135deg, #f0f4f8 0%, #e8eef3 100%);
+  color: var(--text-primary);
+  background: var(--bg-primary);
   min-height: 100vh;
   padding: 0;
 }
@@ -181,10 +229,10 @@ $transition: all 0.2s ease;
 
 // --- Navigation Tabs ---
 .pr-tracker-nav {
-  background: white;
-  border-bottom: 1px solid $gray-200;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-color);
   padding: 0 32px;
-  box-shadow: $shadow-sm;
+  box-shadow: var(--shadow-sm);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -206,7 +254,7 @@ $transition: all 0.2s ease;
     padding: 14px 20px;
     font-size: 14px;
     font-weight: 500;
-    color: $gray-600;
+    color: var(--text-secondary);
     border: none;
     background: none;
     cursor: pointer;
@@ -254,9 +302,9 @@ $transition: all 0.2s ease;
   border-radius: $border-radius-sm;
   font-size: 13px;
   font-weight: 500;
-  border: 1px solid $gray-300;
-  background: white;
-  color: $gray-700;
+  border: 1px solid var(--border-color);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
   cursor: pointer;
   transition: $transition;
   display: inline-flex;
@@ -266,7 +314,7 @@ $transition: all 0.2s ease;
   &:hover {
     border-color: $primary;
     color: $primary;
-    box-shadow: $shadow-sm;
+    box-shadow: var(--shadow-sm);
   }
 
   &.btn-primary {
@@ -312,10 +360,10 @@ $transition: all 0.2s ease;
 
 // --- Filter Bar ---
 .filter-bar {
-  background: white;
+  background: var(--bg-surface);
   border-radius: $border-radius-lg;
   padding: 16px 20px;
-  box-shadow: $shadow-sm;
+  box-shadow: var(--shadow-sm);
   margin-bottom: 20px;
   display: flex;
   gap: 12px;
@@ -340,19 +388,20 @@ $transition: all 0.2s ease;
     input {
       width: 100%;
       padding: 10px 12px 10px 36px;
-      border: 1px solid $gray-300;
+      border: 1px solid var(--border-color);
       border-radius: $border-radius;
       font-size: 14px;
       font-family: $font-family;
       transition: $transition;
-      background: $gray-50;
+      background: var(--bg-input);
+      color: var(--text-primary);
       box-sizing: border-box;
 
       &:focus {
         outline: none;
         border-color: $primary;
         box-shadow: 0 0 0 3px rgba($primary, 0.1);
-        background: white;
+        background: var(--bg-surface);
       }
 
       &::placeholder {
@@ -367,11 +416,12 @@ $transition: all 0.2s ease;
     select {
       width: 100%;
       padding: 10px 32px 10px 12px;
-      border: 1px solid $gray-300;
+      border: 1px solid var(--border-color);
       border-radius: $border-radius;
       font-size: 13px;
       font-family: $font-family;
-      background: $gray-50 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23757575' d='M6 8L1 3h10z'/%3E%3C/svg%3E") no-repeat right 10px center;
+      background: var(--bg-input) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23757575' d='M6 8L1 3h10z'/%3E%3C/svg%3E") no-repeat right 10px center;
+      color: var(--text-primary);
       appearance: none;
       cursor: pointer;
       transition: $transition;
@@ -380,7 +430,7 @@ $transition: all 0.2s ease;
         outline: none;
         border-color: $primary;
         box-shadow: 0 0 0 3px rgba($primary, 0.1);
-        background-color: white;
+        background-color: var(--bg-surface);
       }
     }
   }
@@ -394,10 +444,10 @@ $transition: all 0.2s ease;
   margin-bottom: 24px;
 
   .stat-card {
-    background: white;
+    background: var(--bg-surface);
     border-radius: $border-radius-lg;
     padding: 20px;
-    box-shadow: $shadow-sm;
+    box-shadow: var(--shadow-sm);
     transition: $transition;
     cursor: default;
     border-left: 4px solid transparent;
@@ -410,7 +460,7 @@ $transition: all 0.2s ease;
     }
 
     &:hover {
-      box-shadow: $shadow-md;
+      box-shadow: var(--shadow-md);
       transform: translateY(-2px);
     }
 
@@ -430,12 +480,12 @@ $transition: all 0.2s ease;
     .stat-card-value {
       font-size: 28px;
       font-weight: 700;
-      color: $gray-900;
+      color: var(--text-primary);
     }
 
     .stat-card-label {
       font-size: 12px;
-      color: $gray-500;
+      color: var(--text-tertiary);
       text-transform: uppercase;
       letter-spacing: 0.5px;
       margin-top: 4px;
@@ -445,18 +495,18 @@ $transition: all 0.2s ease;
 
 // --- PR Card ---
 .pr-card {
-  background: white;
+  background: var(--bg-surface);
   border-radius: $border-radius-lg;
   padding: 20px 24px;
-  box-shadow: $shadow-sm;
+  box-shadow: var(--shadow-sm);
   margin-bottom: 12px;
   transition: $transition;
-  border: 1px solid $gray-200;
+  border: 1px solid var(--border-color);
   animation: fadeIn 0.3s ease backwards;
   cursor: pointer;
 
   &:hover {
-    box-shadow: $shadow-md;
+    box-shadow: var(--shadow-md);
     border-color: $primary-light;
     transform: translateY(-1px);
   }
@@ -491,7 +541,7 @@ $transition: all 0.2s ease;
   .pr-card-title {
     font-size: 15px;
     font-weight: 600;
-    color: $gray-900;
+    color: var(--text-primary);
     margin: 0 0 6px 0;
     line-height: 1.4;
     display: flex;
@@ -533,7 +583,7 @@ $transition: all 0.2s ease;
     align-items: center;
     gap: 16px;
     font-size: 12px;
-    color: $gray-500;
+    color: var(--text-tertiary);
     flex-wrap: wrap;
 
     .meta-item {
@@ -569,8 +619,8 @@ $transition: all 0.2s ease;
     font-size: 12px;
 
     .branch-name {
-      background: $gray-100;
-      color: $gray-700;
+      background: var(--branch-bg);
+      color: var(--branch-color);
       padding: 3px 10px;
       border-radius: $border-radius-sm;
       font-family: "Cascadia Code", "Fira Code", monospace;
@@ -589,7 +639,7 @@ $transition: all 0.2s ease;
 
   .pr-card-description {
     font-size: 12px;
-    color: $gray-600;
+    color: var(--text-secondary);
     line-height: 1.4;
     margin-top: 4px;
     width: 100%;
@@ -609,7 +659,7 @@ $transition: all 0.2s ease;
     align-items: center;
     gap: 12px;
     font-size: 12px;
-    color: $gray-600;
+    color: var(--text-secondary);
 
     .stat {
       display: flex;
@@ -650,16 +700,16 @@ $transition: all 0.2s ease;
   gap: 8px;
   margin-top: 12px;
   padding-top: 10px;
-  border-top: 1px solid $gray-200;
+  border-top: 1px solid var(--border-color);
 
   .action-btn {
     padding: 5px 12px;
     font-size: 12px;
     font-weight: 500;
-    border: 1px solid $gray-300;
+    border: 1px solid var(--border-color);
     border-radius: $border-radius-sm;
-    background: white;
-    color: $gray-700;
+    background: var(--bg-surface);
+    color: var(--text-secondary);
     cursor: pointer;
     text-decoration: none;
     transition: $transition;
@@ -824,9 +874,9 @@ $transition: all 0.2s ease;
     align-items: center;
     margin-bottom: 14px;
     padding: 14px 20px;
-    background: white;
+    background: var(--bg-surface);
     border-radius: $border-radius-lg;
-    box-shadow: $shadow-sm;
+    box-shadow: var(--shadow-sm);
     cursor: pointer;
     transition: $transition;
 
@@ -855,12 +905,12 @@ $transition: all 0.2s ease;
       .project-name {
         font-size: 16px;
         font-weight: 600;
-        color: $gray-900;
+        color: var(--text-primary);
       }
 
       .project-pr-count {
         font-size: 12px;
-        color: $gray-500;
+        color: var(--text-tertiary);
         margin-top: 2px;
       }
     }
@@ -1011,8 +1061,8 @@ $transition: all 0.2s ease;
   right: 0;
   width: 400px;
   height: 100vh;
-  background: white;
-  box-shadow: $shadow-xl;
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-lg);
   z-index: 1000;
   animation: slideInRight 0.3s ease;
   display: flex;
@@ -1028,7 +1078,7 @@ $transition: all 0.2s ease;
     justify-content: space-between;
     align-items: center;
     padding: 20px;
-    border-bottom: 1px solid $gray-200;
+    border-bottom: 1px solid var(--border-color);
 
     h3 {
       margin: 0;
@@ -1064,13 +1114,13 @@ $transition: all 0.2s ease;
     padding: 14px;
     border-radius: $border-radius;
     margin-bottom: 8px;
-    border: 1px solid $gray-200;
+    border: 1px solid var(--border-color);
     transition: $transition;
     cursor: pointer;
 
     &:hover {
       border-color: $primary-light;
-      background: $gray-50;
+      background: var(--bg-surface-hover);
     }
 
     &.unread {
@@ -1100,7 +1150,7 @@ $transition: all 0.2s ease;
 
       .notification-message {
         font-size: 13px;
-        color: $gray-800;
+        color: var(--text-primary);
         margin-bottom: 4px;
         line-height: 1.4;
       }
@@ -1134,7 +1184,7 @@ $transition: all 0.2s ease;
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--overlay-bg);
   z-index: 999;
   animation: fadeIn 0.2s ease;
 }
@@ -1143,9 +1193,9 @@ $transition: all 0.2s ease;
 .thread-section {
   margin-top: 12px;
   padding: 12px 16px;
-  background: $gray-50;
+  background: var(--bg-surface-hover);
   border-radius: $border-radius;
-  border: 1px solid $gray-200;
+  border: 1px solid var(--border-color);
 
   .thread-header {
     display: flex;
@@ -1153,7 +1203,7 @@ $transition: all 0.2s ease;
     gap: 8px;
     font-size: 13px;
     font-weight: 600;
-    color: $gray-700;
+    color: var(--text-secondary);
     margin-bottom: 10px;
   }
 
@@ -1161,10 +1211,10 @@ $transition: all 0.2s ease;
     display: flex;
     gap: 10px;
     padding: 10px;
-    background: white;
+    background: var(--bg-surface);
     border-radius: $border-radius-sm;
     margin-bottom: 6px;
-    border: 1px solid $gray-200;
+    border: 1px solid var(--border-color);
 
     .thread-avatar {
       width: 24px;
@@ -1187,19 +1237,19 @@ $transition: all 0.2s ease;
       .thread-author {
         font-size: 12px;
         font-weight: 600;
-        color: $gray-800;
+        color: var(--text-primary);
       }
 
       .thread-text {
         font-size: 12px;
-        color: $gray-600;
+        color: var(--text-secondary);
         margin-top: 2px;
         line-height: 1.4;
       }
 
       .thread-date {
         font-size: 11px;
-        color: $gray-400;
+        color: var(--text-quaternary);
         margin-top: 4px;
       }
     }
@@ -1230,7 +1280,7 @@ $transition: all 0.2s ease;
   .loading-spinner {
     width: 48px;
     height: 48px;
-    border: 4px solid $gray-200;
+    border: 4px solid var(--border-color);
     border-top-color: $primary;
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
@@ -1242,12 +1292,12 @@ $transition: all 0.2s ease;
 
   .loading-text {
     margin-top: 16px;
-    color: $gray-500;
+    color: var(--text-tertiary);
     font-size: 14px;
   }
 
   .loading-subtext {
-    color: $gray-400;
+    color: var(--text-quaternary);
     font-size: 12px;
     margin-top: 4px;
   }
@@ -1255,15 +1305,15 @@ $transition: all 0.2s ease;
 
 // --- Skeleton Loading ---
 .skeleton-card {
-  background: white;
+  background: var(--bg-surface);
   border-radius: $border-radius-lg;
   padding: 20px 24px;
   margin-bottom: 12px;
-  box-shadow: $shadow-sm;
+  box-shadow: var(--shadow-sm);
 
   .skeleton-line {
     height: 14px;
-    background: linear-gradient(90deg, $gray-200 25%, $gray-100 50%, $gray-200 75%);
+    background: linear-gradient(90deg, var(--skeleton-base) 25%, var(--skeleton-shine) 50%, var(--skeleton-base) 75%);
     background-size: 200% 100%;
     animation: shimmer 1.5s infinite;
     border-radius: 4px;
@@ -1291,13 +1341,13 @@ $transition: all 0.2s ease;
   h3 {
     font-size: 18px;
     font-weight: 600;
-    color: $gray-700;
+    color: var(--text-secondary);
     margin: 0 0 8px 0;
   }
 
   p {
     font-size: 14px;
-    color: $gray-500;
+    color: var(--text-tertiary);
     margin: 0;
   }
 }
@@ -1342,7 +1392,7 @@ $transition: all 0.2s ease;
 
 // --- PR Detail Expanded ---
 .pr-detail-expanded {
-  border-top: 1px solid $gray-200;
+  border-top: 1px solid var(--border-color);
   margin-top: 12px;
   padding-top: 12px;
   animation: fadeIn 0.3s ease;
@@ -1350,14 +1400,14 @@ $transition: all 0.2s ease;
   .detail-tabs {
     display: flex;
     gap: 0;
-    border-bottom: 1px solid $gray-200;
+    border-bottom: 1px solid var(--border-color);
     margin-bottom: 12px;
 
     .detail-tab {
       padding: 8px 16px;
       font-size: 12px;
       font-weight: 500;
-      color: $gray-500;
+      color: var(--text-tertiary);
       border: none;
       background: none;
       cursor: pointer;
@@ -1386,11 +1436,11 @@ $transition: all 0.2s ease;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: $gray-300;
+  background: var(--scrollbar-color);
   border-radius: 3px;
 
   &:hover {
-    background: $gray-400;
+    background: var(--scrollbar-hover);
   }
 }
 
