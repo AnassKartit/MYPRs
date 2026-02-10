@@ -84,6 +84,9 @@ jobs:
           git commit -m "v${{ steps.bump.outputs.version }}: bump version [skip ci]"
           git push
 
+      - name: Publish to Marketplace
+        run: npx tfx-cli extension publish --manifest-globs vss-extension.json --token ${{ secrets.MARKETPLACE_PAT }}
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
