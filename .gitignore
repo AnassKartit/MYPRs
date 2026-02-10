@@ -5,3 +5,12 @@ vsix/
 .vscode/
 *.js.map
 .DS_Store
+
+# Secrets & credentials
+.env
+.env.*
+*.pem
+*.key
+*.pat
+credentials.json
+secrets.json
