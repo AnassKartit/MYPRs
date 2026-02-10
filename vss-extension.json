@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "id": "pr-tracker-hub",
   "publisher": "AnassKartit",
-  "version": "1.0.23",
+  "version": "1.0.24",
   "name": "PR Tracker - Pull Request Dashboard",
   "description": "Azure DevOps pull request dashboard: track PRs across projects, detect merge conflicts, monitor approvals, get real-time notifications, and view everything in one widget. Dark mode, English & French.",
   "public": true,
