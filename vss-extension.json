@@ -4,7 +4,7 @@
   "publisher": "AnassKartit",
   "version": "1.0.22",
   "name": "PR Tracker - Pull Request Dashboard",
-  "description": "The all-in-one pull request dashboard for Azure DevOps. Track PRs across every project, detect merge conflicts, monitor reviewer approvals, get real-time notifications, and see it all from a dashboard widget. Dark mode supported. English & French.",
+  "description": "Azure DevOps pull request dashboard: track PRs across projects, detect merge conflicts, monitor approvals, get real-time notifications, and view everything in one widget. Dark mode, English & French.",
   "public": true,
   "galleryFlags": [
     "Public"
