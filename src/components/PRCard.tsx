@@ -286,7 +286,10 @@ const ConflictSection: React.FC<{ conflicts: IMergeConflict[]; pr: IPullRequestI
   }
 
   const getConflictUrl = (conflict: IMergeConflict): string => {
-    const filePath = conflict.conflictPath || conflict.sourceFilePath;
+    let filePath = conflict.conflictPath || conflict.sourceFilePath;
+    if (filePath && !filePath.startsWith("/")) {
+      filePath = "/" + filePath;
+    }
     return `${pr.url}?_a=files&path=${encodeURIComponent(filePath)}`;
   };
 

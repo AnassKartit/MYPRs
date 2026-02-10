@@ -62,7 +62,7 @@
     }
   ],
   "scopes": [
-    "vso.code",
+    "vso.code_write",
     "vso.project",
     "vso.profile",
     "vso.notification_manage"
