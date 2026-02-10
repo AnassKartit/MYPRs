@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "id": "pr-tracker-hub",
   "publisher": "AnassKartit",
-  "version": "1.0.19",
+  "version": "1.0.20",
   "name": "PR Tracker - Pull Request Dashboard",
   "description": "Track all your pull requests across every project in your Azure DevOps organization. Detect merge conflicts, monitor approvals, and stay on top of reviews.",
   "public": true,
@@ -116,8 +116,14 @@
         "previewImageUrl": "static/icon.png",
         "uri": "dist/widget.html",
         "supportedSizes": [
-          { "rowSpan": 1, "columnSpan": 2 },
-          { "rowSpan": 2, "columnSpan": 2 }
+          {
+            "rowSpan": 1,
+            "columnSpan": 2
+          },
+          {
+            "rowSpan": 2,
+            "columnSpan": 2
+          }
         ],
         "supportedScopes": [
           "project_team"
