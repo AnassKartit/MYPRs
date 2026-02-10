@@ -78,14 +78,17 @@ const App: React.FC = () => {
         const user = sdkService.getCurrentUser();
         setCurrentUserId(user.id);
 
-        // Detect dark theme from SDK-injected CSS variables
-        const textColor = getComputedStyle(document.body).getPropertyValue("--text-primary-color").trim();
-        if (textColor) {
-          const r = parseInt(textColor.slice(1, 3), 16) || 0;
-          const g = parseInt(textColor.slice(3, 5), 16) || 0;
-          const b = parseInt(textColor.slice(5, 7), 16) || 0;
-          const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-          setIsDarkTheme(luminance > 0.5);
+        // Detect dark theme from body background (SDK applies theme styles when applyTheme: true)
+        const bgColor = getComputedStyle(document.body).backgroundColor;
+        if (bgColor) {
+          const match = bgColor.match(/(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+          if (match) {
+            const r = parseInt(match[1], 10);
+            const g = parseInt(match[2], 10);
+            const b = parseInt(match[3], 10);
+            const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+            setIsDarkTheme(luminance < 0.5);
+          }
         }
 
         await loadData();
@@ -101,18 +104,21 @@ const App: React.FC = () => {
 
   // Listen for Azure DevOps theme changes
   useEffect(() => {
-    const handleThemeChange = (e: any) => {
-      const data = e.detail;
-      if (data && data.theme) {
-        const textColor = data.theme["text-primary-color"] || "";
-        if (textColor) {
-          const r = parseInt(textColor.slice(1, 3), 16) || 0;
-          const g = parseInt(textColor.slice(3, 5), 16) || 0;
-          const b = parseInt(textColor.slice(5, 7), 16) || 0;
-          const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-          setIsDarkTheme(luminance > 0.5);
+    const handleThemeChange = () => {
+      // After theme change, re-check the body background color
+      setTimeout(() => {
+        const bgColor = getComputedStyle(document.body).backgroundColor;
+        if (bgColor) {
+          const match = bgColor.match(/(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+          if (match) {
+            const r = parseInt(match[1], 10);
+            const g = parseInt(match[2], 10);
+            const b = parseInt(match[3], 10);
+            const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+            setIsDarkTheme(luminance < 0.5);
+          }
         }
-      }
+      }, 50);
     };
     window.addEventListener("themeChanged", handleThemeChange);
     return () => window.removeEventListener("themeChanged", handleThemeChange);

@@ -62,7 +62,7 @@ export async function initializeSDK(): Promise<void> {
   if (_initialized) return;
   try {
     console.log("[PR-Tracker] Starting SDK.init()...");
-    await withTimeout(SDK.init(), 10000, "SDK.init()");
+    await withTimeout(SDK.init({ applyTheme: true }), 10000, "SDK.init()");
     console.log("[PR-Tracker] SDK.init() complete. Waiting for SDK.ready()...");
     await withTimeout(SDK.ready(), 10000, "SDK.ready()");
     console.log("[PR-Tracker] SDK fully initialized.");
