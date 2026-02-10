@@ -1,0 +1,49 @@
+{
+  "manifestVersion": 1,
+  "id": "pr-tracker-hub-dev",
+  "publisher": "AnassKartit",
+  "version": "0.0.1",
+  "name": "PR Tracker (DEV)",
+  "description": "DEV BUILD - Track all your pull requests across every project in your Azure DevOps organization.",
+  "public": false,
+  "categories": ["Azure Repos"],
+  "targets": [
+    {
+      "id": "Microsoft.VisualStudio.Services"
+    }
+  ],
+  "icons": {
+    "default": "static/icon.png"
+  },
+  "baseUri": "https://localhost:3000",
+  "files": [
+    {
+      "path": "dist",
+      "addressable": true
+    },
+    {
+      "path": "static",
+      "addressable": true
+    }
+  ],
+  "scopes": [
+    "vso.code",
+    "vso.project",
+    "vso.profile",
+    "vso.notification_manage"
+  ],
+  "contributions": [
+    {
+      "id": "pr-tracker-hub",
+      "type": "ms.vss-web.hub",
+      "targets": [
+        "ms.vss-code-web.code-hub-group"
+      ],
+      "properties": {
+        "name": "PR Tracker (DEV)",
+        "order": 99,
+        "uri": "dist/hub.html"
+      }
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "name": "azure-devops-pr-tracker",
+  "version": "1.0.11",
+  "description": "Azure DevOps extension to track all pull requests across projects with merge conflict detection and notifications",
+  "author": "Anass Kartit",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AnassKartit/MYPRs"
+  },
+  "main": "dist/hub.js",
+  "scripts": {
+    "build": "webpack --mode production",
+    "dev": "webpack serve --mode development",
+    "dev:watch": "webpack --mode development --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint 'src/**/*.{ts,tsx}'",
+    "lint:fix": "eslint 'src/**/*.{ts,tsx}' --fix",
+    "security:audit": "npm audit --production --audit-level=high",
+    "security:sast": "bash scripts/sast-check.sh",
+    "package": "tfx extension create --manifest-globs vss-extension.json --output-path ./vsix",
+    "package:dev": "webpack --mode development && tfx extension create --manifest-globs vss-extension.dev.json --output-path ./vsix",
+    "clean": "rm -rf dist vsix",
+    "prebuild": "npm run clean",
+    "ci": "npm run typecheck && npm run lint && npm run build && npm run package"
+  },
+  "dependencies": {
+    "azure-devops-extension-api": "^4.0.0",
+    "azure-devops-extension-sdk": "^4.0.0",
+    "react": "^16.14.0",
+    "react-dom": "^16.14.0"
+  },
+  "devDependencies": {
+    "@types/react": "^16.14.0",
+    "@types/react-dom": "^16.9.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "copy-webpack-plugin": "^11.0.0",
+    "css-loader": "^6.11.0",
+    "eslint": "^8.57.0",
+    "eslint-plugin-react": "^7.34.0",
+    "eslint-plugin-security": "^2.1.0",
+    "sass": "^1.77.0",
+    "sass-loader": "^14.2.0",
+    "style-loader": "^3.3.4",
+    "tfx-cli": "^0.17.0",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.4.0",
+    "webpack": "^5.91.0",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^5.2.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}

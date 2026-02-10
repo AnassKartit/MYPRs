@@ -1,0 +1,100 @@
+{
+  "manifestVersion": 1,
+  "id": "pr-tracker-hub",
+  "publisher": "AnassKartit",
+  "version": "1.0.11",
+  "name": "PR Tracker - Pull Request Dashboard",
+  "description": "Track all your pull requests across every project in your Azure DevOps organization. Detect merge conflicts, monitor approvals, and stay on top of reviews.",
+  "public": false,
+  "galleryFlags": ["Public"],
+  "categories": ["Azure Repos"],
+  "tags": [
+    "pull request",
+    "tracker",
+    "dashboard",
+    "merge conflicts",
+    "code review"
+  ],
+  "targets": [
+    {
+      "id": "Microsoft.VisualStudio.Services"
+    }
+  ],
+  "icons": {
+    "default": "static/icon.png"
+  },
+  "content": {
+    "details": {
+      "path": "overview.md"
+    }
+  },
+  "links": {
+    "repository": {
+      "uri": "https://github.com/AnassKartit/MYPRs"
+    },
+    "issues": {
+      "uri": "https://github.com/AnassKartit/MYPRs/issues"
+    },
+    "support": {
+      "uri": "https://github.com/AnassKartit/MYPRs#readme"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "uri": "https://github.com/AnassKartit/MYPRs"
+  },
+  "branding": {
+    "color": "#0078d4",
+    "theme": "dark"
+  },
+  "files": [
+    {
+      "path": "dist",
+      "addressable": true
+    },
+    {
+      "path": "static",
+      "addressable": true
+    }
+  ],
+  "scopes": [
+    "vso.code",
+    "vso.project",
+    "vso.profile",
+    "vso.notification_manage"
+  ],
+  "contributions": [
+    {
+      "id": "pr-tracker-hub",
+      "type": "ms.vss-web.hub",
+      "targets": [
+        "ms.vss-code-web.code-hub-group"
+      ],
+      "properties": {
+        "name": "PR Tracker",
+        "order": 99,
+        "uri": "dist/hub.html",
+        "icon": {
+          "light": "static/icon.png",
+          "dark": "static/icon.png"
+        }
+      }
+    },
+    {
+      "id": "pr-tracker-org-hub",
+      "type": "ms.vss-web.hub",
+      "targets": [
+        "ms.vss-web.collection-admin-hub-group"
+      ],
+      "properties": {
+        "name": "PR Tracker",
+        "order": 99,
+        "uri": "dist/hub.html",
+        "icon": {
+          "light": "static/icon.png",
+          "dark": "static/icon.png"
+        }
+      }
+    }
+  ]
+}
