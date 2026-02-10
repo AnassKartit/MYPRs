@@ -244,8 +244,26 @@ export async function enrichPullRequestWithDetails(
     mergeConflicts: conflicts,
     mergeStatus: conflicts.length > 0 ? MergeStatus.Conflicts : pr.mergeStatus,
     threads,
-    commentCount: threads.reduce((sum, t) => sum + t.comments.length, 0),
+    commentCount: threads
+      .filter((t) => t.comments.some((c) => c.commentType !== "system"))
+      .reduce((sum, t) => sum + t.comments.filter((c) => c.commentType !== "system").length, 0),
   };
+}
+
+export async function approvePullRequest(
+  projectName: string,
+  repositoryId: string,
+  pullRequestId: number
+): Promise<void> {
+  const gitClient = getClient(GitRestClient);
+  const user = SDK.getUser();
+  await gitClient.createPullRequestReviewer(
+    { vote: 10 } as any,
+    repositoryId,
+    pullRequestId,
+    user.id,
+    projectName
+  );
 }
 
 function mapPullRequest(pr: any, project: IProjectInfo, repo: any): IPullRequestItem {

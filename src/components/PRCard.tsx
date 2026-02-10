@@ -7,6 +7,7 @@ import {
   IMergeConflict,
   ICommentThread,
 } from "../models/types";
+import * as sdkService from "../services/sdkService";
 
 interface PRCardProps {
   pr: IPullRequestItem;
@@ -19,6 +20,8 @@ const PRCard: React.FC<PRCardProps> = ({ pr, onLoadDetails }) => {
     "conflicts"
   );
   const [loadingDetails, setLoadingDetails] = useState(false);
+  const [approving, setApproving] = useState(false);
+  const [approveError, setApproveError] = useState<string | null>(null);
 
   const hasConflicts = pr.mergeStatus === MergeStatus.Conflicts || pr.mergeConflicts.length > 0;
 
@@ -37,7 +40,9 @@ const PRCard: React.FC<PRCardProps> = ({ pr, onLoadDetails }) => {
   const approvedReviewers = pr.reviewers.filter((r) => r.vote === ReviewerVote.Approved);
   const rejectedReviewers = pr.reviewers.filter((r) => r.vote === ReviewerVote.Rejected);
   const waitingReviewers = pr.reviewers.filter((r) => r.vote === ReviewerVote.WaitingForAuthor);
-  const activeThreads = pr.threads.filter((t) => !t.isResolved);
+  const activeThreads = pr.threads.filter(
+    (t) => !t.isResolved && t.comments.length > 0 && t.comments.some((c) => c.commentType !== "system")
+  );
 
   return (
     <div
@@ -70,6 +75,10 @@ const PRCard: React.FC<PRCardProps> = ({ pr, onLoadDetails }) => {
             <span className="meta-item">#{pr.id}</span>
             <span className="meta-separator">|</span>
             <span className="meta-item">{formatDate(pr.creationDate)}</span>
+            <span className="meta-separator">|</span>
+            <span className={`age-badge ${getAgeClass(pr.creationDate)}`}>
+              {getAgeLabel(pr.creationDate)}
+            </span>
           </div>
         </div>
 
@@ -138,6 +147,47 @@ const PRCard: React.FC<PRCardProps> = ({ pr, onLoadDetails }) => {
             </span>
           )}
         </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="pr-card-actions" onClick={(e) => e.stopPropagation()}>
+        <a
+          href={`${pr.url}?_a=files`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="action-btn"
+        >
+          &#128196; View Files
+        </a>
+        <button
+          className={`action-btn action-approve ${approving ? "loading" : ""}`}
+          disabled={approving}
+          onClick={async () => {
+            setApproving(true);
+            setApproveError(null);
+            try {
+              await sdkService.approvePullRequest(pr.project.name, pr.repository.id, pr.id);
+              if (onLoadDetails) await onLoadDetails(pr);
+            } catch (err) {
+              setApproveError(err instanceof Error ? err.message : "Failed to approve");
+            } finally {
+              setApproving(false);
+            }
+          }}
+        >
+          {approving ? "Approving..." : "\u2713 Approve"}
+        </button>
+        <a
+          href={pr.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="action-btn"
+        >
+          &#8599; Open in DevOps
+        </a>
+        {approveError && (
+          <span className="action-error">{approveError}</span>
+        )}
       </div>
 
       {/* Expanded Detail View */}
@@ -472,6 +522,27 @@ function formatDate(date: Date): string {
 function truncateText(text: string, maxLen: number): string {
   if (text.length <= maxLen) return text;
   return text.substring(0, maxLen) + "...";
+}
+
+function getAgeDays(date: Date): number {
+  if (!(date instanceof Date) || isNaN(date.getTime())) return 0;
+  return Math.floor((Date.now() - date.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function getAgeLabel(date: Date): string {
+  const days = getAgeDays(date);
+  if (days === 0) return "Today";
+  if (days === 1) return "1 day";
+  if (days < 7) return `${days} days`;
+  if (days < 30) return `${Math.floor(days / 7)}w`;
+  return `${Math.floor(days / 30)}mo`;
+}
+
+function getAgeClass(date: Date): string {
+  const days = getAgeDays(date);
+  if (days < 2) return "age-fresh";
+  if (days <= 5) return "age-aging";
+  return "age-stale";
 }
 
 export default PRCard;

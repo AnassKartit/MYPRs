@@ -403,7 +403,7 @@ $transition: all 0.2s ease;
     border-left: 4px solid transparent;
     animation: fadeIn 0.4s ease backwards;
 
-    @for $i from 1 through 6 {
+    @for $i from 1 through 7 {
       &:nth-child(#{$i}) {
         animation-delay: #{$i * 0.05}s;
       }
@@ -420,6 +420,7 @@ $transition: all 0.2s ease;
     &.stat-conflicts { border-left-color: $danger; }
     &.stat-rejected { border-left-color: $danger; }
     &.stat-drafts { border-left-color: $gray-500; }
+    &.stat-aging { border-left-color: $warning; }
 
     .stat-card-icon {
       font-size: 28px;
@@ -604,6 +605,88 @@ $transition: all 0.2s ease;
       align-items: center;
       gap: 4px;
     }
+  }
+}
+
+// --- Age Badge ---
+.age-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+
+  &.age-fresh {
+    background: $success-light;
+    color: $success;
+  }
+
+  &.age-aging {
+    background: $warning-light;
+    color: $warning;
+  }
+
+  &.age-stale {
+    background: $danger-light;
+    color: $danger;
+  }
+}
+
+// --- Quick Action Buttons ---
+.pr-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid $gray-200;
+
+  .action-btn {
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid $gray-300;
+    border-radius: $border-radius-sm;
+    background: white;
+    color: $gray-700;
+    cursor: pointer;
+    text-decoration: none;
+    transition: $transition;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: $font-family;
+
+    &:hover {
+      border-color: $primary;
+      color: $primary;
+      background: $primary-light;
+    }
+
+    &.action-approve {
+      border-color: $success;
+      color: $success;
+
+      &:hover {
+        background: $success-light;
+      }
+
+      &.loading {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+    }
+  }
+
+  .action-error {
+    font-size: 11px;
+    color: $danger;
+    margin-left: 4px;
   }
 }
 

@@ -185,7 +185,7 @@ const App: React.FC = () => {
               onClick={() => setViewMode("byProject")}
             >
               &#128193; By Project
-              <span className="tab-badge">{projects.length}</span>
+              <span className="tab-badge">{projectGroups.length}</span>
             </button>
             <button
               className={`nav-tab ${viewMode === "conflicts" ? "active" : ""}`}
