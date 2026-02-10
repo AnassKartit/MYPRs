@@ -1,6 +1,6 @@
 {
   "name": "azure-devops-pr-tracker",
-  "version": "1.0.21",
+  "version": "1.0.22",
   "description": "Azure DevOps extension to track all pull requests across projects with merge conflict detection and notifications",
   "author": "Anass Kartit",
   "license": "MIT",
