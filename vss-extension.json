@@ -5,7 +5,7 @@
   "version": "1.0.18",
   "name": "PR Tracker - Pull Request Dashboard",
   "description": "Track all your pull requests across every project in your Azure DevOps organization. Detect merge conflicts, monitor approvals, and stay on top of reviews.",
-  "public": false,
+  "public": true,
   "galleryFlags": [
     "Public"
   ],
